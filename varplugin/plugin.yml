@@ -1,0 +1,10 @@
+name: YourOwnVariables
+main: com.varplugin.Main
+version: 1.0
+author: Haizenfell
+api-version: 1.13
+depend: [PlaceholderAPI]
+commands:
+  var:
+    description: Variable Management
+    usage: /var <set|delete|check> <variable> [value] [player]
