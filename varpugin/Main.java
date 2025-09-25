@@ -120,34 +120,50 @@ public class Main extends JavaPlugin implements TabExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (args.length == 1 && args[0].equalsIgnoreCase("export")) {
-            if (!(sender instanceof Player)) exportToYamlAsync(sender);
-            else sender.sendMessage(PREFIX + "§cThis command is only available in the console!");
+
+        if (!(sender instanceof Player) || sender.hasPermission("yov.admin")) {
+
+            if (args.length == 1 && args[0].equalsIgnoreCase("export")) {
+                if (!(sender instanceof Player)) {
+                    exportToYamlAsync(sender);
+                } else {
+                    sender.sendMessage(PREFIX + "§cThis command is only available in the console!");
+                }
+                return true;
+            }
+
+            if (args.length < 2) {
+                sender.sendMessage(PREFIX + "§cUsage: /yov <export|set|add|delete|check> <variable> [value] [player] [-s]");
+                return true;
+            }
+
+            boolean silent = args[args.length - 1].equalsIgnoreCase("-s");
+            if (silent) args = Arrays.copyOf(args, args.length - 1);
+
+            String action = args[0].toLowerCase();
+            String baseKey = args[1];
+            String value = args.length >= 3 ? args[2] : null;
+            String player = args.length >= 4 ? args[3] : null;
+            String key = player != null ? baseKey + "_" + player.toLowerCase() : baseKey.toLowerCase();
+
+            switch (action) {
+                case "delete" -> deleteVariable(key, sender, silent);
+                case "add" -> { if (value != null) addVariable(key, value, sender, silent); }
+                case "set" -> { if (value != null) setVariable(key, value, sender, silent); }
+                case "check" -> { 
+                    String val = cache.get(key); 
+                    sender.sendMessage(PREFIX + key + ": " + (val != null ? val : "null")); 
+                }
+                default -> sender.sendMessage(PREFIX + "§cUnknown action: " + action);
+            }
+            return true;
+
+        } else {
+            sender.sendMessage(PREFIX + "§cYou do not have permission to use this command!");
             return true;
         }
-
-        if (args.length < 2) {
-            sender.sendMessage(PREFIX + "§cUsage: /var <export|set|add|delete|check> <variable> [value] [player] [-s]");
-            return true;
-        }
-
-        boolean silent = args[args.length - 1].equalsIgnoreCase("-s");
-        if (silent) args = Arrays.copyOf(args, args.length - 1);
-
-        String action = args[0].toLowerCase();
-        String baseKey = args[1];
-        String value = args.length >= 3 ? args[2] : null;
-        String player = args.length >= 4 ? args[3] : null;
-        String key = player != null ? baseKey + "_" + player.toLowerCase() : baseKey.toLowerCase();
-
-        switch (action) {
-            case "delete" -> deleteVariable(key, sender, silent);
-            case "add" -> { if (value != null) addVariable(key, value, sender, silent); }
-            case "set" -> { if (value != null) setVariable(key, value, sender, silent); }
-            case "check" -> { String val = cache.get(key); sender.sendMessage(PREFIX + key + ": " + (val != null ? val : "null")); }
-        }
-        return true;
     }
+
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
