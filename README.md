@@ -1,44 +1,86 @@
-The plugin allows you to create, modify, delete, and check custom variables. It was originally developed for personal use, but I decided to make it publicly available. PlaceholderAPI is required for it to work.
+# YourOwnVariables (YOV) Plugin
 
+The **YourOwnVariables (YOV)** plugin allows you to **create, modify, delete, and check custom variables**. Originally developed for personal use, it is now publicly available.  
+**Note:** PlaceholderAPI is required for the plugin to function properly.
 
 ## Requirements
 
-- PlaceholderAPI
+- [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/)
+
+## Commands & Usage
+
+### Creating Variables
+
+`/yov set test1 1` # Creates an integer variable
+
+`/yov set test2 1.0` # Creates a double variable
+
+`/yov set test3 love my` # Creates a string variable
+
+`/yov set test4 32 PLAYER_NAME` # Creates a unique variable tied to a player
 
 
-Example usage:
-/yov set test1 62 (creates an int variable)
-/yov set test2 62.4 (creates a double variable)
-/yov set test3 example (creates a string variable)
-/yov set test4 32 PLAYER_NAME (creates a unique variable with the player’s name)
 
-To modify variables, there are two commands: add and remove:
-/yov remove test1
-/yov add test2 5 (if the variable was 3, it will become 8)
-/yov add test3 5 (if the variable was 3.0, it will become 8.0)
-/yov add test3 -1 (if the variable was 8.0, it will become 7.0)
+### Modifying Variables
 
-To check variable values, you can use two methods.
+Use the `add` or `remove` commands to update existing variables:
+
+`/yov add test2 5` # If variable was 3, it becomes 8
+
+`/yov add test3 5` # If variable was 3.0, it becomes 8.0
+
+`/yov add test3 -1` # If variable was 8.0, it becomes 7.0
+
+`/yov remove test1` # Removes the variable
+
+
+**Silent execution:** add `-s` to execute commands without sending messages:
+
+`/yov add newvariable 1 PLAYER_NAME -s`
+
+
+### Checking Variables
+
 Via command:
-/yov check test → [YOV] Variable value 'test': 8.0
-/yov check test_PLAYERNAME (if it's a unique variable)
 
-To export .db variables to .yml file
-/yov export (only in console)
+`/yov check test` # → [YOV] Variable value 'test': 8.0
 
-Add the -s flag to the end of commands to execute them silently.
-/yov add newvariable 1 player_name -s
-
-And via placeholders:
-For unique variables: %yov_player_key:test% — the first part will be replaced with the player’s name, and after the colon is the variable name.
-This is useful for displaying values in holograms or checking them with other plugins (I use it with ConditionalEvents).
-
-For global variables: %yov_test% — the entire placeholder will be replaced with the variable’s value.
-
-Example:
-/papi parse --null %yov_test% → 8.0
-/papi parse Haizenfell %yov_player_key:test% → 9 (reads the value of variable test_haizenfell)
+`/yov check test_PLAYERNAME` # For unique variables
 
 
-Permissions:
-- yov.admin — required to modify other players' variables.
+Export variables from `.db` to `.yml` (console only):
+
+`/yov export`
+
+
+## Placeholders
+
+### Unique Variables
+
+`%yov_player_key:<variable_name>%`
+
+
+- The first part is replaced with the player's name.  
+- Useful for holograms or integration with other plugins (e.g., ConditionalEvents).
+- in other plugins you can use `/yov set example 1 %player_name% -s` to make player variable
+
+**Example:**
+
+`/papi parse Haizenfell %yov_player_key:test%` # Reads the value of variable test_Haizenfell
+
+
+### Global Variables
+
+`%yov_<variable_name>%`
+
+
+- Entire placeholder is replaced with the variable's value.
+
+**Example:**
+
+`/papi parse --null %yov_test% # → 8.0`
+
+
+## Permissions
+
+- `yov.admin` — Required to modify other players' variables.
