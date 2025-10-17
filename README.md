@@ -29,7 +29,7 @@ Use the `add` or `remove` commands to update existing variables:
 
 `/yov add test3 5` # If variable was 3.0, it becomes 8.0
 
-`/yov add test3 -1` # If variable was 8.0, it becomes 7.0
+`/yov rem test3 1` # If variable was 8.0, it becomes 7.0
 
 `/yov remove test1` # Removes the variable
 
@@ -59,6 +59,15 @@ Export variables from `.db` to `.yml` (console only):
 
 `%yov_player_key:<variable_name>%`
 
+# rounding support:
+`%yov_player_key:test% == 14.543 → %rounded_player_key:test% == 15`
+`%yov_player_key:test% == 14.443 → %rounded_player_key:test% == 14`
+Rounding always goes up.
+
+# fractional rounding options:
+`%yov_player_key:test% == 14.543`
+`%rounded_player_key_1:test% == 14.5`
+` %rounded_player_key_2:test% == 14.54`
 
 - The first part is replaced with the player's name.  
 - Useful for holograms or integration with other plugins (e.g., ConditionalEvents).
