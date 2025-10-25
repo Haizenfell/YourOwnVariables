@@ -1,0 +1,9 @@
+storage:
+  type: sqlite # or mysql
+  auto-reconnect: true
+  mysql:
+    host: localhost
+    port: 3306
+    database: yourownvariables
+    username: root
+    password: ""
