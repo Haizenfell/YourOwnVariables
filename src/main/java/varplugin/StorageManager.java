@@ -80,12 +80,11 @@ public class StorageManager {
             else throw e;
         }
     }
-
-    // --------------------- CRUD ----------------------
+    
 
     public void setVariable(String key, String value) throws SQLException {
         ensureConnection();
-        cache.put(key, value); // кеш всегда актуален
+        cache.put(key, value);
         String sql = type.equals("mysql")
                 ? "INSERT INTO variables (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)"
                 : "INSERT INTO variables (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value";
@@ -98,7 +97,6 @@ public class StorageManager {
     }
 
     public String getVariable(String key) throws SQLException {
-        // если есть в кеше — сразу вернуть
         String cached = cache.get(key);
         if (cached != null) return cached;
 
@@ -108,7 +106,7 @@ public class StorageManager {
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     String val = rs.getString("value");
-                    cache.putIfAbsent(key, val); // если в кеше нет — добавляем
+                    cache.putIfAbsent(key, val);
                     return val;
                 }
             }
@@ -133,7 +131,7 @@ public class StorageManager {
             while (rs.next()) {
                 String k = rs.getString("key");
                 keys.add(k);
-                cache.putIfAbsent(k, getVariable(k)); // заполняем кеш если нужно
+                cache.putIfAbsent(k, getVariable(k));
             }
         }
         return keys;

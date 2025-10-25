@@ -1,6 +1,6 @@
 name: YourOwnVariables
 main: varplugin.Main
-version: 3.5
+version: 3.6
 author: Haizenfell
 api-version: 1.13
 depend: [PlaceholderAPI]
