@@ -82,9 +82,8 @@ public class YOVCommand implements TabExecutor {
                 return true;
             }
 
-            // дальше — стандартные set/add/rem/delete/check
             if (args.length < 2) {
-                sender.sendMessage(PREFIX + "§cUsage: /yov <help|reload|export|migrate|set|add|rem|delete|check|userclear> ...");
+                sender.sendMessage(PREFIX + "§cUsage: /yov <help|reload|export|migrate|set|add|rem|delete|check|userclear>");
                 return true;
             }
 

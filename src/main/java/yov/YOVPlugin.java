@@ -103,7 +103,6 @@ public class YOVPlugin extends JavaPlugin {
             backend = storageManager.getBackend();
             backend.connect();
 
-            // КЭШ
             if (cache == null) {
                 cache = new VariableCache(getLogger());
             } else {
