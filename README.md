@@ -1,95 +1,128 @@
-# YourOwnVariables (YOV) Plugin
+# 🌌 YourOwnVariables (YOV)
 
-The **YourOwnVariables (YOV)** plugin allows you to **create, modify, delete, and check custom variables**. Originally developed for personal use, it is now publicly available.  
-**Note:** PlaceholderAPI is required for the plugin to function properly.
+A flexible variable management system for Minecraft servers.\
+Allows you to create, modify, delete, migrate, and display **global**
+and **player-based variables**.
 
-## Requirements
+> **Requires:** [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/)\
+> Works on all Spigot/Paper versions (1.8--1.21+)
 
-- [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/)
+------------------------------------------------------------------------
 
-## Commands & Usage
-
-### Creating Variables
-
-`/yov set test1 1` # Creates an integer variable
-
-`/yov set test2 1.0` # Creates a double variable
-
-`/yov set test3 love my` # Creates a string variable
-
-`/yov set test4 32 PLAYER_NAME` # Creates a unique variable tied to a player
-
-
-
-### Modifying Variables
-
-Use the `add` or `remove` commands to update existing variables:
-
-`/yov add test2 5` # If variable was 3, it becomes 8
-
-`/yov add test3 5` # If variable was 3.0, it becomes 8.0
-
-`/yov rem test3 1` # If variable was 8.0, it becomes 7.0
-
-`/yov remove test1` # Removes the variable
-
-
-**Silent execution:** add `-s` to execute commands without sending messages:
-
-`/yov add newvariable 1 PLAYER_NAME -s`
-
-
-### Checking Variables
-
-Via command:
-
-`/yov check test` # → [YOV] Variable value 'test': 8.0
-
-`/yov check test_PLAYERNAME` # For unique variables
-
-
-Export variables from `.db` to `.yml` (console only):
-
-`/yov export`
-
-
-## Placeholders
-
-### Unique Variables
-
-`%yov_player_key:<variable_name>%`
-
-# rounding support:
-`%yov_player_key:test% == 14.543 → %rounded_player_key:test% == 15`
-`%yov_player_key:test% == 14.443 → %rounded_player_key:test% == 14`
-Rounding always goes up.
-
-# fractional rounding options:
-`%yov_player_key:test% == 14.543`
-`%rounded_player_key_1:test% == 14.5`
-` %rounded_player_key_2:test% == 14.54`
-
-- The first part is replaced with the player's name.  
-- Useful for holograms or integration with other plugins (e.g., ConditionalEvents).
-- in other plugins you can use `/yov set example 1 %player_name% -s` to make player variable
-
-**Example:**
-
-`/papi parse Haizenfell %yov_player_key:test%` # Reads the value of variable test_Haizenfell
-
+# ✨ Features
 
 ### Global Variables
 
-`%yov_<variable_name>%`
+-   `%yov_<variable>%`
 
+### Player Variables
 
-- Entire placeholder is replaced with the variable's value.
+-   Stored as `<player>_<variable>`
+-   Accessed with `%yov_player_key:<variable>%`
 
-**Example:**
+### Migration System
 
-`/papi parse --null %yov_test% # → 8.0`
+    /yov migrate <from> <to>
 
+### Commands
 
-## Permissions
+-   `/yov help`
+-   `/yov reload`
+-   `/yov set <variable> <value> [player] [-s]`
+-   `/yov add <variable> <amount> [player] [-s]`
+-   `/yov rem <variable> <amount> [player] [-s]`
+-   `/yov delete <variable> [player] [-s]`
+-   `/yov check <variable> [player]`
+-   `/yov migrate <from> <to>`
+-   `/yov userclear <player>`
 
-- `yov.admin` — Required to modify other players' variables.
+------------------------------------------------------------------------
+
+# 📜 Commands & Usage
+
+## Creating Variables
+
+    /yov set test 1
+    /yov set test 1.0
+    /yov set test hello world
+    /yov set level 5 playerName
+
+## Modifying Variables
+
+    /yov add test 5
+    /yov rem test 1
+    /yov delete test
+
+### Silent mode
+
+    /yov add test 1 player -s
+
+------------------------------------------------------------------------
+
+# 🔍 Checking Variables
+
+    /yov check test
+    /yov check coins playerName
+
+------------------------------------------------------------------------
+
+# 🧩 PlaceholderAPI Usage
+
+## Global variable
+
+    %yov_test%
+
+## Player variable
+
+    %yov_player_key:coins%
+
+## Rounded values
+
+    %rounded:coins%
+    %rounded_1:coins%
+    %rounded_2:coins%
+
+------------------------------------------------------------------------
+
+# 🌍 Integration Example (ConditionalEvents)
+
+``` yml
+conditions:
+  check-level: '%yov_player_key:level% >= 20'
+```
+
+Or dynamically:
+
+    /yov set example 1 %player_name% -s
+
+------------------------------------------------------------------------
+
+# 🔐 Permissions
+
+  Permission   Description
+  ------------ -------------
+  yov.admin    Full access
+
+------------------------------------------------------------------------
+
+# 📦 Storage Types
+
+Supports: - YAML - SQLite - MySQL - MariaDB
+
+Switch storage via config, then:
+
+    /yov migrate <old> <new>
+
+------------------------------------------------------------------------
+
+# 📜 Global & Player Structure (YAML)
+
+``` yaml
+global:
+  season: "1"
+
+players:
+  haizenfell:
+    coins: "500"
+    kills: "10"
+```
