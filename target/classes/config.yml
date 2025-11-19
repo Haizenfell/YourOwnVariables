@@ -1,9 +1,13 @@
 storage:
-  type: sqlite # or mysql
-  auto-reconnect: true
+  # Available: sqlite, mysql, mariadb, yaml
+  type: "yaml"
+
   mysql:
-    host: localhost
+    host: "localhost"
     port: 3306
-    database: yourownvariables
-    username: root
+    database: "yov"
+    username: "root"
     password: ""
+
+  # Only used for MySQL/MariaDB
+  auto-reconnect: false

@@ -1,13 +1,14 @@
 name: YourOwnVariables
-main: varplugin.Main
-version: 3.6
+main: yov.YOVPlugin
+version: 4.0
 author: Haizenfell
 api-version: 1.13
 depend: [PlaceholderAPI]
+
 commands:
   yov:
     description: Variable Management
-    usage: /<command> <help|export|set|rem|add|delete|check> <variable> [value] [player] [-s]
+    usage: "/<command> <help|reload|export|migrate|set|rem|add|delete|check|userclear>"
     aliases: [var]
 
 permissions:
