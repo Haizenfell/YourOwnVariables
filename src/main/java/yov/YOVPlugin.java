@@ -10,7 +10,6 @@ import yov.listener.PapiExpansionListener;
 import yov.placeholder.RoundedPlaceholder;
 import yov.placeholder.VarPlaceholder;
 import yov.placeholder.VarPlayerKeyPlaceholder;
-import yov.service.ExportService;
 import yov.service.MigrationService;
 import yov.service.VariableService;
 import yov.storage.StorageBackend;
@@ -27,7 +26,6 @@ public class YOVPlugin extends JavaPlugin {
 
     private VariableCache cache;
     private VariableService variableService;
-    private ExportService exportService;
     private MigrationService migrationService;
 
     private PapiExpansionListener papiListener;
@@ -58,7 +56,7 @@ public class YOVPlugin extends JavaPlugin {
 
         PluginCommand cmd = getCommand("yov");
         if (cmd != null) {
-            YOVCommand executor = new YOVCommand(this, variableService, exportService, cache, migrationService);
+            YOVCommand executor = new YOVCommand(this, variableService, cache, migrationService);
             cmd.setExecutor(executor);
             cmd.setTabCompleter(executor);
         }
@@ -90,15 +88,7 @@ public class YOVPlugin extends JavaPlugin {
         String pass = getConfig().getString("storage.mysql.password", "");
 
         try {
-            storageManager = new StorageManager(
-                    getDataFolder(),
-                    type,
-                    host,
-                    port,
-                    dbName,
-                    user,
-                    pass
-            );
+            storageManager = new StorageManager(getDataFolder(), type, host, port, dbName, user, pass);
 
             backend = storageManager.getBackend();
             backend.connect();
@@ -115,9 +105,6 @@ public class YOVPlugin extends JavaPlugin {
             } else {
                 variableService.setBackend(backend);
             }
-
-            if (exportService == null)
-                exportService = new ExportService(this, cache, PREFIX);
 
             if (migrationService == null)
                 migrationService = new MigrationService(this);

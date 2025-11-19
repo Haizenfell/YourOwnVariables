@@ -5,7 +5,6 @@ yov/cache/VariableCache.class
 yov/service/MigrationService.class
 yov/storage/StorageManager$1.class
 yov/command/YOVCommand.class
-yov/service/ExportService.class
 yov/YOVPlugin.class
 yov/listener/PapiExpansionListener.class
 yov/service/MigrationService$1.class

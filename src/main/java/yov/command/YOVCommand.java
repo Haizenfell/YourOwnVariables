@@ -7,7 +7,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import yov.YOVPlugin;
 import yov.cache.VariableCache;
-import yov.service.ExportService;
 import yov.service.MigrationService;
 import yov.service.VariableService;
 
@@ -17,18 +16,15 @@ public class YOVCommand implements TabExecutor {
 
     private final YOVPlugin plugin;
     private final VariableService variableService;
-    private final ExportService exportService;
     private final VariableCache cache;
     private final MigrationService migrationService;
 
     public YOVCommand(YOVPlugin plugin,
                       VariableService variableService,
-                      ExportService exportService,
                       VariableCache cache,
                       MigrationService migrationService) {
         this.plugin = plugin;
         this.variableService = variableService;
-        this.exportService = exportService;
         this.cache = cache;
         this.migrationService = migrationService;
     }
@@ -51,7 +47,6 @@ public class YOVCommand implements TabExecutor {
                 sender.sendMessage(PREFIX + "§e/yov rem <variable> <amount> [player] [-s]");
                 sender.sendMessage(PREFIX + "§e/yov delete <variable> [player] [-s]");
                 sender.sendMessage(PREFIX + "§e/yov check <variable> [player]");
-                sender.sendMessage(PREFIX + "§e/yov export §7- Export all variables to variables.yml (console only)");
                 sender.sendMessage(PREFIX + "§e/yov migrate <from> <to> §7- Migrate between storages (console only)");
                 sender.sendMessage(PREFIX + "§e/yov userclear <player> §7- Remove all variables of player");
                 return true;
@@ -59,15 +54,6 @@ public class YOVCommand implements TabExecutor {
 
             if (args.length == 1 && args[0].equalsIgnoreCase("reload")) {
                 plugin.reloadYOV(sender);
-                return true;
-            }
-
-            if (args.length == 1 && args[0].equalsIgnoreCase("export")) {
-                if (!(sender instanceof Player)) {
-                    exportService.exportToYamlAsync(sender);
-                } else {
-                    sender.sendMessage(PREFIX + "§cThis command is only available in console!");
-                }
                 return true;
             }
 
@@ -83,14 +69,12 @@ public class YOVCommand implements TabExecutor {
             }
 
             if (args.length < 2) {
-                sender.sendMessage(PREFIX + "§cUsage: /yov <help|reload|export|migrate|set|add|rem|delete|check|userclear>");
+                sender.sendMessage(PREFIX + "§cUsage: /yov <help|reload|migrate|set|add|rem|delete|check|userclear>");
                 return true;
             }
 
             boolean silent = args[args.length - 1].equalsIgnoreCase("-s");
-            if (silent) {
-                args = Arrays.copyOf(args, args.length - 1);
-            }
+            if (silent) args = Arrays.copyOf(args, args.length - 1);
 
             String action = args[0].toLowerCase(Locale.ROOT);
             String baseKey = args[1];
@@ -134,7 +118,7 @@ public class YOVCommand implements TabExecutor {
 
         if (args.length == 1) {
             return filterList(
-                    Arrays.asList("help", "reload", "set", "add", "rem", "delete", "check", "export", "migrate", "userclear"),
+                    Arrays.asList("help", "reload", "set", "add", "rem", "delete", "check", "migrate", "userclear"),
                     args[0]);
         }
 
@@ -144,9 +128,7 @@ public class YOVCommand implements TabExecutor {
             }
             if (args[0].equalsIgnoreCase("userclear")) {
                 List<String> players = new ArrayList<>();
-                for (Player p : Bukkit.getOnlinePlayers()) {
-                    players.add(p.getName());
-                }
+                for (Player p : Bukkit.getOnlinePlayers()) players.add(p.getName());
                 return filterList(players, args[1]);
             }
             return filterList(new ArrayList<>(cache.getMap().keySet()), args[1]);
@@ -162,9 +144,7 @@ public class YOVCommand implements TabExecutor {
 
         if (args.length == 4) {
             List<String> players = new ArrayList<>();
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                players.add(p.getName());
-            }
+            for (Player p : Bukkit.getOnlinePlayers()) players.add(p.getName());
             return filterList(players, args[3]);
         }
 

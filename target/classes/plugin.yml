@@ -8,7 +8,7 @@ depend: [PlaceholderAPI]
 commands:
   yov:
     description: Variable Management
-    usage: "/<command> <help|reload|export|migrate|set|rem|add|delete|check|userclear>"
+    usage: "/<command> <help|reload|migrate|set|rem|add|delete|check|userclear>"
     aliases: [var]
 
 permissions:
