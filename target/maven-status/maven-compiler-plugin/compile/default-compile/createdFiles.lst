@@ -6,6 +6,7 @@ yov/service/MigrationService.class
 yov/storage/StorageManager$1.class
 yov/command/YOVCommand.class
 yov/YOVPlugin.class
+yov/defaults/DefaultVariables.class
 yov/listener/PapiExpansionListener.class
 yov/service/MigrationService$1.class
 yov/storage/StorageType.class

@@ -1,3 +1,13 @@
+/*
+ * This file is part of YourOwnVariables.
+ * Copyright (C) 2025 Haizenfell
+ *
+ * Licensed under the YourOwnVariables Proprietary License.
+ * Unauthorized copying, modification, distribution, or reverse engineering
+ * of this software is strictly prohibited.
+ *
+ * Full license text is provided in the LICENSE file.
+ */
 package yov;
 
 import org.bukkit.Bukkit;
@@ -6,6 +16,7 @@ import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 import yov.cache.VariableCache;
 import yov.command.YOVCommand;
+import yov.defaults.DefaultVariables;
 import yov.listener.PapiExpansionListener;
 import yov.placeholder.RoundedPlaceholder;
 import yov.placeholder.VarPlaceholder;
@@ -65,6 +76,7 @@ public class YOVPlugin extends JavaPlugin {
             registerPlaceholders();
             getLogger().info("PlaceholderAPI hook enabled.");
         }
+        new DefaultVariables(this, cache, variableService);
 
         getLogger().info("YOV enabled.");
     }
