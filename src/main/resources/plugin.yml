@@ -1,8 +1,8 @@
 name: YourOwnVariables
 main: yov.YOVPlugin
-version: 4.1
+version: 4.2
 author: Haizenfell
-api-version: 1.13
+api-version: 1.21
 depend: [PlaceholderAPI]
 
 commands:
