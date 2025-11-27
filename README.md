@@ -5,7 +5,7 @@ Allows you to create, modify, delete, migrate, and display **global**
 and **player-based variables**.
 
 > **Requires:** [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/)\
-> Works on all Spigot/Paper versions (1.8--1.21+)
+> Works on all Spigot/Paper versions (1.21.10+)
 
 ------------------------------------------------------------------------
 
