@@ -10,6 +10,7 @@
  */
 package yov.storage;
 
+import java.sql.Connection;
 import java.util.List;
 
 public interface StorageBackend {
@@ -23,6 +24,8 @@ public interface StorageBackend {
     void delete(String key) throws Exception;
 
     List<String> getAllKeys() throws Exception;
+
+    Connection getConnection() throws Exception;
 
     void close() throws Exception;
 }

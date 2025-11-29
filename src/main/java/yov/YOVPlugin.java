@@ -14,6 +14,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
+import yov.async.WriteQueue;
 import yov.cache.VariableCache;
 import yov.command.YOVCommand;
 import yov.defaults.DefaultVariables;
@@ -40,6 +41,7 @@ public class YOVPlugin extends JavaPlugin {
     private MigrationService migrationService;
 
     private PapiExpansionListener papiListener;
+    private WriteQueue writeQueue;
 
     public VariableCache getVariableCache() {
         return cache;
@@ -49,8 +51,12 @@ public class YOVPlugin extends JavaPlugin {
         return variableService;
     }
 
-    public StorageBackend getBackend() {
-        return backend;
+    public String getStorageType() {
+        if (backend == null) return "UNKNOWN";
+
+        return backend.getClass().getSimpleName()
+                .replace("Storage", "")
+                .toUpperCase();
     }
 
     @Override
@@ -60,7 +66,7 @@ public class YOVPlugin extends JavaPlugin {
         papiListener = new PapiExpansionListener(this);
         Bukkit.getPluginManager().registerEvents(papiListener, this);
 
-        if (!initStorageAndServices()) {
+        if (!setupServices()) {
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
@@ -76,6 +82,7 @@ public class YOVPlugin extends JavaPlugin {
             registerPlaceholders();
             getLogger().info("PlaceholderAPI hook enabled.");
         }
+
         new DefaultVariables(this, cache, variableService);
 
         getLogger().info("YOV enabled.");
@@ -84,50 +91,16 @@ public class YOVPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         try {
+            if (variableService != null && variableService.getWriteQueue() != null) {
+                variableService.getWriteQueue().close();
+            }
+        } catch (Exception ignored) {}
+        try {
             if (backend != null) backend.close();
         } catch (Exception e) {
             getLogger().log(Level.WARNING, "Error closing backend", e);
         }
         getLogger().info("YOV disabled.");
-    }
-
-    private boolean initStorageAndServices() {
-        String type = getConfig().getString("storage.type", "sqlite");
-        String host = getConfig().getString("storage.mysql.host", "localhost");
-        int port = getConfig().getInt("storage.mysql.port", 3306);
-        String dbName = getConfig().getString("storage.mysql.database", "yov");
-        String user = getConfig().getString("storage.mysql.username", "root");
-        String pass = getConfig().getString("storage.mysql.password", "");
-
-        try {
-            storageManager = new StorageManager(getDataFolder(), type, host, port, dbName, user, pass);
-
-            backend = storageManager.getBackend();
-            backend.connect();
-
-            if (cache == null) {
-                cache = new VariableCache(getLogger());
-            } else {
-                cache.getMap().clear();
-            }
-            cache.loadFromDatabase(backend);
-
-            if (variableService == null) {
-                variableService = new VariableService(backend, cache, getLogger(), PREFIX);
-            } else {
-                variableService.setBackend(backend);
-            }
-
-            if (migrationService == null)
-                migrationService = new MigrationService(this);
-
-            getLogger().info("Connected to " + type.toUpperCase() + " storage successfully.");
-            return true;
-
-        } catch (Exception e) {
-            getLogger().log(Level.SEVERE, "Failed to initialize storage backend", e);
-            return false;
-        }
     }
 
     public void registerPlaceholders() {
@@ -136,24 +109,81 @@ public class YOVPlugin extends JavaPlugin {
         new RoundedPlaceholder(cache).register();
     }
 
+    private boolean setupServices() {
+
+        if (writeQueue != null) {
+            try {
+                writeQueue.close();
+            } catch (Exception ignored) {}
+            writeQueue = null;
+        }
+
+        if (backend != null) {
+            try {
+                backend.close();
+            } catch (Exception ignored) {}
+            backend = null;
+        }
+
+        String type = getConfig().getString("storage.type", "sqlite");
+        String host = getConfig().getString("storage.mariadb.host", "localhost");
+        int port = getConfig().getInt("storage.mariadb.port", 3306);
+        String dbName = getConfig().getString("storage.mariadb.database", "yov");
+        String user = getConfig().getString("storage.mariadb.username", "root");
+        String pass = getConfig().getString("storage.mariadb.password", "");
+
+        try {
+            storageManager = new StorageManager(getDataFolder(), type, host, port, dbName, user, pass);
+            backend = storageManager.getBackend();
+            backend.connect();
+
+            if (cache == null) cache = new VariableCache(getLogger());
+            else cache.getMap().clear();
+
+            cache.loadFromDatabase(backend);
+
+            writeQueue = new WriteQueue(backend);
+
+            variableService = new VariableService(
+                    backend,
+                    cache,
+                    getLogger(),
+                    PREFIX,
+                    writeQueue
+            );
+
+            if (migrationService == null)
+                migrationService = new MigrationService(this);
+
+            getLogger().info("Storage initialized successfully using " + type.toUpperCase());
+            return true;
+
+        } catch (Exception e) {
+            getLogger().log(Level.SEVERE, "Failed to initialize storage", e);
+            return false;
+        }
+    }
+
     public void reloadYOV(CommandSender sender) {
+
         sender.sendMessage(PREFIX + "§eReloading config and storage...");
 
         reloadConfig();
 
-        try {
-            if (backend != null) backend.close();
-        } catch (Exception e) {
-            getLogger().log(Level.WARNING, "Error closing backend during reload", e);
-        }
-
-        if (!initStorageAndServices()) {
-            sender.sendMessage(PREFIX + "§cReload failed. See console.");
+        if (!setupServices()) {
+            sender.sendMessage(PREFIX + "§cReload failed. Check console.");
             return;
         }
 
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
             registerPlaceholders();
+        }
+
+        PluginCommand cmd = getCommand("yov");
+        if (cmd != null) {
+            YOVCommand executor = new YOVCommand(this, variableService, cache, migrationService);
+            cmd.setExecutor(executor);
+            cmd.setTabCompleter(executor);
         }
 
         sender.sendMessage(PREFIX + "§aReload complete!");

@@ -31,10 +31,9 @@ public class StorageManager {
         StorageType storageType = StorageType.fromString(type);
 
         backend = switch (storageType) {
-            case YAML -> new YamlStorage(dataFolder);
-            case MYSQL -> new SqlStorage("mysql", host, port, database, user, pass);
-            case MARIADB -> new SqlStorage("mariadb", host, port, database, user, pass);
+            case YAML   -> new YamlStorage(dataFolder);
             case SQLITE -> new SqliteStorage(dataFolder);
+            case MARIADB -> new SqlStorage("mariadb", host, port, database, user, pass);
         };
     }
 

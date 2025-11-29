@@ -33,7 +33,6 @@ public class MigrationService {
 
     public void migrate(String fromName, String toName, CommandSender sender) {
 
-        // Только консоль!
         if (!(sender instanceof ConsoleCommandSender)) {
             sender.sendMessage(YOVPlugin.PREFIX + "§cThis command can only be run from console!");
             return;
@@ -52,11 +51,11 @@ public class MigrationService {
 
         File dataFolder = plugin.getDataFolder();
 
-        String host = plugin.getConfig().getString("storage.mysql.host", "localhost");
-        int port = plugin.getConfig().getInt("storage.mysql.port", 3306);
-        String dbName = plugin.getConfig().getString("storage.mysql.database", "yov");
-        String user = plugin.getConfig().getString("storage.mysql.username", "root");
-        String pass = plugin.getConfig().getString("storage.mysql.password", "");
+        String host = plugin.getConfig().getString("storage.mariadb.host", "localhost");
+        int port = plugin.getConfig().getInt("storage.mariadb.port", 3306);
+        String dbName = plugin.getConfig().getString("storage.mariadb.database", "yov");
+        String user = plugin.getConfig().getString("storage.mariadb.username", "root");
+        String pass = plugin.getConfig().getString("storage.mariadb.password", "");
 
         StorageBackend source = createBackend(fromType, dataFolder, host, port, dbName, user, pass);
         StorageBackend target = createBackend(toType, dataFolder, host, port, dbName, user, pass);
@@ -111,14 +110,8 @@ public class MigrationService {
             plugin.getLogger().log(Level.SEVERE, "Migration error", e);
 
         } finally {
-            try {
-                source.close();
-            } catch (Exception ignored) {
-            }
-            try {
-                target.close();
-            } catch (Exception ignored) {
-            }
+            try { source.close(); } catch (Exception ignored) {}
+            try { target.close(); } catch (Exception ignored) {}
         }
     }
 
@@ -129,13 +122,14 @@ public class MigrationService {
     ) {
         return switch (type) {
 
-            case YAML -> new YamlStorage(dataFolder);
+            case YAML ->
+                    new YamlStorage(dataFolder);
 
-            case SQLITE -> new SqliteStorage(dataFolder);
+            case SQLITE ->
+                    new SqliteStorage(dataFolder);
 
-            case MYSQL -> new SqlStorage("mysql", host, port, database, user, pass);
-
-            case MARIADB -> new SqlStorage("mariadb", host, port, database, user, pass);
+            case MARIADB ->
+                    new SqlStorage("mariadb", host, port, database, user, pass);
         };
     }
 }

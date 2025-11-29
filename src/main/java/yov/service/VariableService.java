@@ -11,6 +11,7 @@
 package yov.service;
 
 import org.bukkit.command.CommandSender;
+import yov.async.WriteQueue;
 import yov.cache.VariableCache;
 import yov.storage.StorageBackend;
 
@@ -22,29 +23,32 @@ import java.util.logging.Logger;
 
 public class VariableService {
 
-    private StorageBackend backend;
+    private final StorageBackend backend;
     private final VariableCache cache;
     private final Logger logger;
     private final String prefix;
+    private final WriteQueue writeQueue;
 
     public VariableService(StorageBackend backend,
                            VariableCache cache,
                            Logger logger,
-                           String prefix) {
+                           String prefix,
+                           WriteQueue writeQueue) {
         this.backend = backend;
         this.cache = cache;
         this.logger = logger;
         this.prefix = prefix;
+        this.writeQueue = writeQueue;
     }
 
-    public void setBackend(StorageBackend backend) {
-        this.backend = backend;
+    public WriteQueue getWriteQueue() {
+        return writeQueue;
     }
 
     public void setVariable(String key, String value, CommandSender sender, boolean silent) {
         cache.put(key, value);
         try {
-            backend.set(key, value);
+            writeQueue.enqueueSet(key, value);
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error saving variable " + key, e);
         }
@@ -56,7 +60,7 @@ public class VariableService {
     public void deleteVariable(String key, CommandSender sender, boolean silent) {
         cache.remove(key);
         try {
-            backend.delete(key);
+            writeQueue.enqueueDelete(key);
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error deleting variable " + key, e);
         }
@@ -85,38 +89,52 @@ public class VariableService {
     private void modifyVariable(String key, String amountStr, CommandSender sender,
                                 boolean silent, boolean isAdd) {
 
-        String existingVal = cache.getOrDefault(key, "0");
-        try {
-            if (isWholeNumber(existingVal) && isWholeNumber(amountStr)) {
-                int current = Integer.parseInt(existingVal);
-                int delta = Integer.parseInt(amountStr);
-                int result = isAdd ? current + delta : current - delta;
+        cache.compute(key, (k, oldVal) -> {
 
-                setVariable(key, String.valueOf(result), sender, silent);
+            if (oldVal == null) oldVal = "0";
 
-                if (!silent) {
-                    sender.sendMessage(prefix + "§aVariable '" + key + "' "
-                            + (isAdd ? "increased" : "decreased")
-                            + " by " + delta + ". New value: " + result);
+            try {
+                if (isWholeNumber(oldVal) && isWholeNumber(amountStr)) {
+                    int current = Integer.parseInt(oldVal);
+                    int delta = Integer.parseInt(amountStr);
+                    int result = isAdd ? current + delta : current - delta;
+
+                    enqueueModify(k, String.valueOf(result));
+
+                    if (!silent) {
+                        sender.sendMessage(prefix + "§aVariable '" + k + "' " +
+                                (isAdd ? "increased" : "decreased") +
+                                " by " + delta + ". New value: " + result);
+                    }
+
+                    return String.valueOf(result);
                 }
-            } else {
-                double current = Double.parseDouble(existingVal);
+
+                double current = Double.parseDouble(oldVal);
                 double delta = Double.parseDouble(amountStr);
                 double result = isAdd ? current + delta : current - delta;
 
-                setVariable(key, String.valueOf(result), sender, silent);
+                enqueueModify(k, String.valueOf(result));
 
                 if (!silent) {
-                    sender.sendMessage(prefix + "§aVariable '" + key + "' "
-                            + (isAdd ? "increased" : "decreased")
-                            + " by " + delta + ". New value: " + result);
+                    sender.sendMessage(prefix + "§aVariable '" + k + "' " +
+                            (isAdd ? "increased" : "decreased") +
+                            " by " + delta + ". New value: " + result);
                 }
+
+                return String.valueOf(result);
+
+            } catch (Exception e) {
+                if (!silent) {
+                    sender.sendMessage(prefix + "§cError: Invalid number.");
+                }
+                return oldVal;
             }
-        } catch (NumberFormatException e) {
-            if (!silent) {
-                sender.sendMessage(prefix + "§cError: Variable or value is not a number.");
-            }
-        }
+        });
+    }
+
+    private void enqueueModify(String key, String value) {
+        writeQueue.enqueueSet(key, value);
     }
 
     public void clearPlayerVariables(String playerName, CommandSender sender) {
@@ -136,7 +154,7 @@ public class VariableService {
         for (String key : toRemove) {
             cache.remove(key);
             try {
-                backend.delete(key);
+                writeQueue.enqueueDelete(key);
             } catch (Exception e) {
                 logger.log(Level.WARNING, "Error deleting variable " + key + " for userclear", e);
             }

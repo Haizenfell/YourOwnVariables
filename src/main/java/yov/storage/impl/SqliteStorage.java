@@ -62,8 +62,8 @@ public class SqliteStorage implements StorageBackend, BatchCapable {
     private void createTable() throws SQLException {
         String sql = """
                 CREATE TABLE IF NOT EXISTS variables (
-                    `key` TEXT PRIMARY KEY,
-                    `value` TEXT
+                    key   TEXT PRIMARY KEY,
+                    value TEXT
                 );
                 """;
         try (Statement st = connection.createStatement()) {
@@ -73,17 +73,17 @@ public class SqliteStorage implements StorageBackend, BatchCapable {
 
     private void prepareStatements() throws SQLException {
         psSet = connection.prepareStatement(
-                "INSERT INTO variables (`key`, `value`) VALUES (?, ?) " +
-                        "ON CONFLICT(`key`) DO UPDATE SET value = excluded.value"
+                "INSERT INTO variables (key, value) VALUES (?, ?) " +
+                        "ON CONFLICT(key) DO UPDATE SET value = excluded.value"
         );
         psGet = connection.prepareStatement(
-                "SELECT value FROM variables WHERE `key` = ?"
+                "SELECT value FROM variables WHERE key = ?"
         );
         psDelete = connection.prepareStatement(
-                "DELETE FROM variables WHERE `key` = ?"
+                "DELETE FROM variables WHERE key = ?"
         );
         psGetAll = connection.prepareStatement(
-                "SELECT `key` FROM variables"
+                "SELECT key FROM variables"
         );
     }
 
@@ -130,6 +130,12 @@ public class SqliteStorage implements StorageBackend, BatchCapable {
             connection.setAutoCommit(false);
             inBatch = true;
         }
+    }
+
+    @Override
+    public Connection getConnection() throws Exception {
+        ensureConnection();
+        return connection;
     }
 
     @Override

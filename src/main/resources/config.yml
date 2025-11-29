@@ -1,13 +1,13 @@
 storage:
-  # Available: sqlite, mysql, mariadb, yaml
-  type: "yaml"
+  # Available: sqlite, mariadb, yaml
+  type: "sqlite"
 
-  mysql:
-    host: "localhost"
+  mariadb:
+    host: localhost
     port: 3306
-    database: "yov"
-    username: "root"
-    password: ""
+    database: varplugin
+    username: yov
+    password: mysecurepassword
 
-  # Only used for MySQL/MariaDB
+  # Only used for MariaDB
   auto-reconnect: false

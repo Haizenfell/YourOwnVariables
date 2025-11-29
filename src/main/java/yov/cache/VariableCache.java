@@ -14,6 +14,7 @@ import yov.storage.StorageBackend;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -40,6 +41,10 @@ public class VariableCache {
         } catch (Exception e) {
             logger.log(Level.WARNING, "Error loading cache from backend", e);
         }
+    }
+
+    public String compute(String key, BiFunction<String, String, String> func) {
+        return cache.compute(key, func);
     }
 
     public Map<String, String> getMap() {

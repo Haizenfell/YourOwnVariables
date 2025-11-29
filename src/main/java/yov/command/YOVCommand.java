@@ -57,6 +57,7 @@ public class YOVCommand implements TabExecutor {
                 sender.sendMessage(PREFIX + "§e/yov rem <variable> <amount> [player] [-s]");
                 sender.sendMessage(PREFIX + "§e/yov delete <variable> [player] [-s]");
                 sender.sendMessage(PREFIX + "§e/yov check <variable> [player]");
+                sender.sendMessage(PREFIX + "§e/yov storage §7- Show current storage type");
                 sender.sendMessage(PREFIX + "§e/yov migrate <from> <to> §7- Migrate between storages (console only)");
                 sender.sendMessage(PREFIX + "§e/yov userclear <player> §7- Remove all variables of player");
                 return true;
@@ -75,6 +76,11 @@ public class YOVCommand implements TabExecutor {
             if (args.length == 2 && args[0].equalsIgnoreCase("userclear")) {
                 String playerName = args[1];
                 variableService.clearPlayerVariables(playerName, sender);
+                return true;
+            }
+
+            if (args.length == 1 && args[0].equalsIgnoreCase("storage")) {
+                sender.sendMessage(PREFIX + "§eCurrent storage: §6" + plugin.getStorageType());
                 return true;
             }
 
@@ -128,13 +134,13 @@ public class YOVCommand implements TabExecutor {
 
         if (args.length == 1) {
             return filterList(
-                    Arrays.asList("help", "reload", "set", "add", "rem", "delete", "check", "migrate", "userclear"),
+                    Arrays.asList("help", "reload", "set", "add", "rem", "delete", "check", "storage", "migrate", "userclear"),
                     args[0]);
         }
 
         if (args.length == 2) {
             if (args[0].equalsIgnoreCase("migrate")) {
-                return filterList(Arrays.asList("sqlite", "mysql", "mariadb", "yaml"), args[1]);
+                return filterList(Arrays.asList("sqlite", "mariadb", "yaml"), args[1]); // mysql удалён
             }
             if (args[0].equalsIgnoreCase("userclear")) {
                 List<String> players = new ArrayList<>();
@@ -145,7 +151,7 @@ public class YOVCommand implements TabExecutor {
         }
 
         if (args.length == 3 && args[0].equalsIgnoreCase("migrate")) {
-            return filterList(Arrays.asList("sqlite", "mysql", "mariadb", "yaml"), args[2]);
+            return filterList(Arrays.asList("sqlite", "mariadb", "yaml"), args[2]);
         }
 
         if (args.length == 3 && args[0].equalsIgnoreCase("set")) {

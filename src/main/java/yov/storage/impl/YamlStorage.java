@@ -15,9 +15,13 @@ import yov.storage.StorageBackend;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.sql.Connection;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class YamlStorage implements StorageBackend {
 
@@ -44,8 +48,14 @@ public class YamlStorage implements StorageBackend {
     @Override
     public void connect() throws Exception {
         if (!file.exists()) {
-            file.getParentFile().mkdirs();
-            file.createNewFile();
+            File parent = file.getParentFile();
+            if (!parent.exists() && !parent.mkdirs()) {
+                throw new IOException("Failed to create directory: " + parent.getAbsolutePath());
+            }
+
+            if (!file.exists() && !file.createNewFile()) {
+                throw new IOException("Failed to create file: " + file.getAbsolutePath());
+            }
         }
 
         yaml = YamlConfiguration.loadConfiguration(file);
@@ -72,7 +82,7 @@ public class YamlStorage implements StorageBackend {
             try {
                 yaml.save(file);
             } catch (IOException e) {
-                e.printStackTrace();
+                Logger.getLogger("YOV").log(Level.SEVERE, "Failed to save YAML file " + file.getName(), e);
             } finally {
                 dirty.set(false);
                 saveScheduled.set(false);
@@ -89,7 +99,7 @@ public class YamlStorage implements StorageBackend {
     }
 
     private boolean isPlayerKey(String key) {
-        return key.contains("_"); // player_variable
+        return key.contains("_");
     }
 
     private String getPlayerFromKey(String key) {
@@ -154,12 +164,14 @@ public class YamlStorage implements StorageBackend {
         List<String> keys = new ArrayList<>();
 
         synchronized (lock) {
-            if (yaml.contains("global")) {
-                keys.addAll(yaml.getConfigurationSection("global").getKeys(false));
+            var globalSec = yaml.getConfigurationSection("global");
+            if (globalSec != null) {
+                keys.addAll(globalSec.getKeys(false));
             }
 
-            if (yaml.contains("players")) {
-                for (String player : yaml.getConfigurationSection("players").getKeys(false)) {
+            var playersSec = yaml.getConfigurationSection("players");
+            if (playersSec != null) {
+                for (String player : playersSec.getKeys(false)) {
                     var sec = yaml.getConfigurationSection("players." + player);
                     if (sec == null) continue;
 
@@ -174,10 +186,20 @@ public class YamlStorage implements StorageBackend {
     }
 
     @Override
-    public void close() throws Exception {
-        if (dirty.get()) {
-            saveSync();
+    public Connection getConnection() {
+        return null;
+    }
+
+    @Override
+    public void close() {
+        try {
+            if (dirty.get()) {
+                saveSync();
+            }
+        } catch (IOException e) {
+            Logger.getLogger("YOV").log(Level.SEVERE, "Failed to save YAML during close()", e);
         }
+
         scheduler.shutdownNow();
     }
 }
