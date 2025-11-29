@@ -107,7 +107,7 @@ Or dynamically:
 
 # 📦 Storage Types
 
-Supports: - YAML - SQLite - MySQL - MariaDB
+Supports: - YAML - SQLite - MariaDB
 
 Switch storage via config, then:
 
