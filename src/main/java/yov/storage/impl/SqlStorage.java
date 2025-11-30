@@ -45,11 +45,12 @@ public class SqlStorage implements StorageBackend {
     @Override
     public void connect() throws Exception {
 
-        Class.forName("org.mariadb.jdbc.Driver");
-
-        String jdbcUrl =
-                "jdbc:mariadb://" + host + ":" + port + "/" + database +
-                        "?useUnicode=true&characterEncoding=utf8mb4&sessionVariables=sql_mode=''";
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        String jdbcUrl = "jdbc:mysql://" + host + ":" + port + "/" + database
+                + "?useSSL=false"
+                + "&allowPublicKeyRetrieval=true"
+                + "&serverTimezone=UTC"
+                + "&sessionVariables=sql_mode=''";
 
         HikariConfig cfg = new HikariConfig();
         cfg.setJdbcUrl(jdbcUrl);
@@ -61,8 +62,11 @@ public class SqlStorage implements StorageBackend {
         cfg.setConnectionTimeout(5000);
         cfg.setIdleTimeout(60000);
         cfg.setMaxLifetime(30 * 60 * 1000L);
+        cfg.addDataSourceProperty("cachePrepStmts", "true");
+        cfg.addDataSourceProperty("prepStmtCacheSize", "250");
+        cfg.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
 
-        cfg.setPoolName("YOV-MARIADB");
+        cfg.setPoolName("YOV-POOL");
         cfg.setInitializationFailTimeout(-1);
         cfg.setConnectionTestQuery("SELECT 1");
 
