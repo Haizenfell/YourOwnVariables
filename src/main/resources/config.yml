@@ -5,9 +5,9 @@ storage:
   mariadb:
     host: localhost
     port: 3306
-    database: varplugin
+    database: db
     username: yov
     password: mysecurepassword
 
   # Only used for MariaDB
-  auto-reconnect: false
+  auto-reconnect: true
