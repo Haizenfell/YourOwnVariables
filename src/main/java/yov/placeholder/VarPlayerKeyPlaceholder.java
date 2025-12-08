@@ -14,14 +14,17 @@ import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import yov.YOVPlugin;
 import yov.cache.VariableCache;
 
 public class VarPlayerKeyPlaceholder extends PlaceholderExpansion {
 
     private final VariableCache cache;
+    private final YOVPlugin plugin;
 
-    public VarPlayerKeyPlaceholder(VariableCache cache) {
+    public VarPlayerKeyPlaceholder(YOVPlugin plugin, VariableCache cache) {
         this.cache = cache;
+        this.plugin = plugin;
     }
 
     @Override
@@ -31,12 +34,12 @@ public class VarPlayerKeyPlaceholder extends PlaceholderExpansion {
 
     @Override
     public @NotNull String getAuthor() {
-        return "Haizenfell";
+        return plugin.getPluginAuthors();
     }
 
     @Override
     public @NotNull String getVersion() {
-        return "4.4";
+        return plugin.getPluginVersion();
     }
 
     @Override

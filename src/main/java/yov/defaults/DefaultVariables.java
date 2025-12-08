@@ -63,18 +63,31 @@ public class DefaultVariables implements Listener {
     public void onJoin(PlayerJoinEvent event) {
         Player p = event.getPlayer();
         String player = p.getName().toLowerCase(Locale.ROOT);
+        
+        if (!defaults.isConfigurationSection("variables")) {
+            return;
+        }
 
-        if (!defaults.contains("variables")) return;
+        var section = defaults.getConfigurationSection("variables");
+        if (section == null) {
+            return;
+        }
 
-        for (String var : defaults.getConfigurationSection("variables").getKeys(false)) {
+        var keys = section.getKeys(false);
+        if (keys == null || keys.isEmpty()) {
+            return;
+        }
+
+        for (String var : keys) {
             String fullKey = player + "_" + var.toLowerCase(Locale.ROOT);
 
             if (cache.get(fullKey) != null) continue;
 
-            String value = defaults.getString("variables." + var);
+            String value = section.getString(var);
             if (value == null) continue;
 
             service.setVariable(fullKey, value, null, true);
         }
     }
+
 }

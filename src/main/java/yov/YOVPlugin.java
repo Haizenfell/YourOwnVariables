@@ -14,6 +14,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.NotNull;
 import yov.async.WriteQueue;
 import yov.cache.VariableCache;
 import yov.command.YOVCommand;
@@ -27,6 +28,7 @@ import yov.service.VariableService;
 import yov.storage.StorageBackend;
 import yov.storage.StorageManager;
 
+import java.util.List;
 import java.util.logging.Level;
 
 public class YOVPlugin extends JavaPlugin {
@@ -57,6 +59,22 @@ public class YOVPlugin extends JavaPlugin {
         return backend.getClass().getSimpleName()
                 .replace("Storage", "")
                 .toUpperCase();
+    }
+
+    public @NotNull String getPluginVersion() {
+        return getDescription().getVersion();
+    }
+
+    public @NotNull String getPluginName() {
+        return getDescription().getName();
+    }
+
+    public @NotNull String getPluginAuthors() {
+        List<String> authors = getDescription().getAuthors();
+        if (authors == null || authors.isEmpty()) {
+            return "Unknown";
+        }
+        return String.join(", ", authors);
     }
 
     @Override
@@ -104,9 +122,9 @@ public class YOVPlugin extends JavaPlugin {
     }
 
     public void registerPlaceholders() {
-        new VarPlaceholder(cache).register();
-        new VarPlayerKeyPlaceholder(cache).register();
-        new RoundedPlaceholder(cache).register();
+        new VarPlaceholder(this, cache).register();
+        new VarPlayerKeyPlaceholder(this, cache).register();
+        new RoundedPlaceholder(this, cache).register();
     }
 
     private boolean setupServices() {

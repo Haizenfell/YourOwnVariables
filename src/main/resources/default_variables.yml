@@ -1,2 +1,4 @@
-variables:
-  claim_points: "200"
+variables: {}
+#variables:
+  #claim_points: "200"
+  #variable: "String"

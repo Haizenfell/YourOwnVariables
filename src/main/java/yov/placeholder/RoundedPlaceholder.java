@@ -14,6 +14,7 @@ import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import yov.YOVPlugin;
 import yov.cache.VariableCache;
 
 import java.util.Locale;
@@ -21,10 +22,13 @@ import java.util.Locale;
 public class RoundedPlaceholder extends PlaceholderExpansion {
 
     private final VariableCache cache;
+    private final YOVPlugin plugin;
 
-    public RoundedPlaceholder(VariableCache cache) {
+    public RoundedPlaceholder(YOVPlugin plugin, VariableCache cache) {
+        this.plugin = plugin;
         this.cache = cache;
     }
+
 
     @Override
     public @NotNull String getIdentifier() {
@@ -33,12 +37,12 @@ public class RoundedPlaceholder extends PlaceholderExpansion {
 
     @Override
     public @NotNull String getAuthor() {
-        return "Haizenfell";
+        return plugin.getPluginAuthors();
     }
 
     @Override
     public @NotNull String getVersion() {
-        return "4.4";
+        return plugin.getPluginVersion();
     }
 
     @Override
