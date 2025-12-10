@@ -1,4 +1,4 @@
 variables: {}
 #variables:
-  #claim_points: "200"
-  #variable: "String"
+  #claim_points: "200" >> %yov_player_key:claim_points% == 200
+  #variable: "String" >> %yov_player_key:variable% == "String"

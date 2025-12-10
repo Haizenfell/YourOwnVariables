@@ -1,13 +1,33 @@
 storage:
-  # Available: sqlite, mariadb, yaml
-  type: "sqlite"
-
+  type: sqlite #or mariadb
   mariadb:
     host: localhost
     port: 3306
-    database: db
-    username: yov
-    password: mysecurepassword
+    database: yov
+    username: root
+    password: ""
 
-  # Only used for MariaDB
-  auto-reconnect: true
+    use-ssl: false
+    allow-public-key-retrieval: true
+    server-timezone: "UTC"
+    session-variables: "sql_mode=''"
+
+    table: "variables"
+    key-column: "key"
+    value-column: "value"
+    table-engine: "InnoDB"
+    table-charset: "utf8mb4"
+
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 5000
+      idle-timeout: 60000
+      max-lifetime: 1800000
+      cache-prep-stmts: true
+      prep-stmt-cache-size: 250
+      prep-stmt-cache-sql-limit: 2048
+      pool-name: "YOV-POOL"
+      initialization-fail-timeout: -1
+      connection-test-query: "SELECT 1"
+

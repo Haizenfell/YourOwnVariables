@@ -1,123 +1,140 @@
-# 🌌 YourOwnVariables (YOV)
+# **YourOwnVariables (YOV)**
+A flexible and powerful variable management system for Minecraft servers.
 
-A flexible variable management system for Minecraft servers.\
-Allows you to create, modify, delete, migrate, and display **global**
-and **player-based variables**.
+---
 
-> **Requires:** [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/)\
-> Works on all Spigot/Paper versions (1.16.5-1.21.11)
+**Requires:** [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/)  
+Works on all Spigot/Paper versions **1.16.5 – 1.21.11**
 
-------------------------------------------------------------------------
+---
 
-# ✨ Features
+## ✨ **Features**
 
-### Global Variables
+### ✔ Global Variables
+- `%yov_<variable>%`
 
--   `%yov_<variable>%`
+### ✔ Player Variables
+- Stored as: `<player>_<variable>`
+- Accessed via: `%yov_player_key:<variable>%`
 
-### Player Variables
+### ✔ Storage Migration System
+```bash
+/yov migrate <from> <to>
+```
 
--   Stored as `<player>_<variable>`
--   Accessed with `%yov_player_key:<variable>%`
+### ✔ Commands
+- `/yov help`
+- `/yov reload`
+- `/yov set <variable> <value> [player] [-s]`
+- `/yov add <variable> <amount> [player] [-s]`
+- `/yov rem <variable> <amount> [player] [-s]`
+- `/yov delete <variable> [player] [-s]`
+- `/yov check <variable> [player]`
+- `/yov migrate <from> <to>`
+- `/yov userclear <player>`
 
-### Migration System
+---
 
-    /yov migrate <from> <to>
+## 🧩 **Commands & Usage**
 
-### Commands
+### Creating variables
+```bash
+/yov set test 1
+/yov set test 1.0
+/yov set test hello world
+/yov set level 5 playerName
+```
 
--   `/yov help`
--   `/yov reload`
--   `/yov set <variable> <value> [player] [-s]`
--   `/yov add <variable> <amount> [player] [-s]`
--   `/yov rem <variable> <amount> [player] [-s]`
--   `/yov delete <variable> [player] [-s]`
--   `/yov check <variable> [player]`
--   `/yov migrate <from> <to>`
--   `/yov userclear <player>`
-
-------------------------------------------------------------------------
-
-# 📜 Commands & Usage
-
-## Creating Variables
-
-    /yov set test 1
-    /yov set test 1.0
-    /yov set test hello world
-    /yov set level 5 playerName
-
-## Modifying Variables
-
-    /yov add test 5
-    /yov rem test 1
-    /yov delete test
+### Modifying variables
+```bash
+/yov add test 5
+/yov rem test 1
+/yov delete test
+```
 
 ### Silent mode
+```bash
+/yov add test 1 player -s
+```
 
-    /yov add test 1 player -s
+---
 
-------------------------------------------------------------------------
+## 🔍 **Checking Variables**
+```bash
+/yov check test
+/yov check playerName_coins
+```
 
-# 🔍 Checking Variables
+---
 
-    /yov check test
-    /yov check coins playerName
+## 🔗 **PlaceholderAPI Usage**
 
-------------------------------------------------------------------------
+**Global variable**
+```bash
+%yov_test%
+```
 
-# 🧩 PlaceholderAPI Usage
+**Player variable**
+```bash
+%yov_player_key:coins%
+```
 
-## Global variable
+**Rounded values**
+```bash
+%rounded:coins%
+%rounded_1:coins%
+%rounded_2:coins%
+%rounded_player_key:coins%
+%rounded_player_key_2:coins%
+```
 
-    %yov_test%
+---
 
-## Player variable
+## 📦 **Default variables**
+```yml
+variables:
+  claim_points: "200"
+```
 
-    %yov_player_key:coins%
+---
 
-## Rounded values
-
-    %rounded:coins%
-    %rounded_1:coins%
-    %rounded_2:coins%
-
-------------------------------------------------------------------------
-
-# 🌍 Integration Example (ConditionalEvents)
-
-``` yml
+## ⚙️ **Integration Example (ConditionalEvents)**
+```yml
 conditions:
   check-level: '%yov_player_key:level% >= 20'
 ```
 
-Or dynamically:
+**Dynamic variable creation**
+```bash
+/yov set example 1 %player_name% -s
+```
 
-    /yov set example 1 %player_name% -s
+---
 
-------------------------------------------------------------------------
+## 🔑 **Permissions**
 
-# 🔐 Permissions
+| Permission  | Description |
+|------------|------------|
+| `yov.admin` | Full access |
 
-  Permission   Description
-  ------------ -------------
-  yov.admin    Full access
+---
 
-------------------------------------------------------------------------
+## 💾 **Storage Types**
 
-# 📦 Storage Types
+Supports:
+- YAML
+- SQLite
+- MariaDB
 
-Supports: - YAML - SQLite - MariaDB
+Switch storage:
+```bash
+/yov migrate <old> <new>
+```
 
-Switch storage via config, then:
+---
 
-    /yov migrate <old> <new>
-
-------------------------------------------------------------------------
-
-# 📜 Global & Player Structure (YAML)
-
-``` yaml
+## 📁 **YAML Structure Example**
+```yml
 global:
   season: "1"
 
