@@ -15,20 +15,19 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import yov.YOVPlugin;
-import yov.cache.VariableCache;
+import yov.service.VariableService;
 
 import java.util.Locale;
 
 public class RoundedPlaceholder extends PlaceholderExpansion {
 
-    private final VariableCache cache;
+    private final VariableService variableService;
     private final YOVPlugin plugin;
 
-    public RoundedPlaceholder(YOVPlugin plugin, VariableCache cache) {
+    public RoundedPlaceholder(YOVPlugin plugin, VariableService variableService) {
         this.plugin = plugin;
-        this.cache = cache;
+        this.variableService = variableService;
     }
-
 
     @Override
     public @NotNull String getIdentifier() {
@@ -80,11 +79,11 @@ public class RoundedPlaceholder extends PlaceholderExpansion {
 
             String key = keyPart.substring(1);
             if (isPlayerKey && player != null) {
-                key = player.getName().toLowerCase() + "_" + key.toLowerCase();
+                key = player.getName().toLowerCase(Locale.ROOT) + "_" + key.toLowerCase(Locale.ROOT);
             }
 
-            String value = cache.getOrDefault(key.toLowerCase(Locale.ROOT), "null");
-            if (value.equals("null")) return "null";
+            String value = variableService.getSynchronizedValue(key.toLowerCase(Locale.ROOT));
+            if (value == null || value.equals("null")) return "null";
 
             double num = Double.parseDouble(value);
             String pattern = "%." + decimals + "f";

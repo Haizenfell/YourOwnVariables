@@ -124,6 +124,23 @@ public class SqliteStorage implements StorageBackend, BatchCapable {
     }
 
     @Override
+    public List<String> getKeysByPrefix(String prefix) throws Exception {
+        ensureConnection();
+        List<String> list = new ArrayList<>();
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT key FROM variables WHERE key LIKE ?"
+        )) {
+            ps.setString(1, prefix + "%");
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(rs.getString("key"));
+                }
+            }
+        }
+        return list;
+    }
+
+    @Override
     public void beginBatch() throws Exception {
         ensureConnection();
         if (!inBatch) {

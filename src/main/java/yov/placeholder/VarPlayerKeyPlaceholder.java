@@ -15,15 +15,17 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import yov.YOVPlugin;
-import yov.cache.VariableCache;
+import yov.service.VariableService;
+
+import java.util.Locale;
 
 public class VarPlayerKeyPlaceholder extends PlaceholderExpansion {
 
-    private final VariableCache cache;
+    private final VariableService variableService;
     private final YOVPlugin plugin;
 
-    public VarPlayerKeyPlaceholder(YOVPlugin plugin, VariableCache cache) {
-        this.cache = cache;
+    public VarPlayerKeyPlaceholder(YOVPlugin plugin, VariableService variableService) {
+        this.variableService = variableService;
         this.plugin = plugin;
     }
 
@@ -56,8 +58,9 @@ public class VarPlayerKeyPlaceholder extends PlaceholderExpansion {
     public @Nullable String onPlaceholderRequest(@Nullable Player player, @NotNull String identifier) {
         if (player == null) return "null";
 
-        String fullKey = player.getName().toLowerCase() + "_" + identifier.toLowerCase();
+        String fullKey = (player.getName() + "_" + identifier).toLowerCase(Locale.ROOT);
 
-        return cache.getOrDefault(fullKey, "null");
+        String val = variableService.getSynchronizedValue(fullKey);
+        return val != null ? val : "null";
     }
 }

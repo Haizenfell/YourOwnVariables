@@ -14,7 +14,10 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import yov.storage.StorageBackend;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -57,7 +60,7 @@ public class SqlStorage implements StorageBackend {
         cfg.setUsername(user);
         cfg.setPassword(pass);
 
-        cfg.setMaximumPoolSize(10);
+        cfg.setMaximumPoolSize(5);
         cfg.setMinimumIdle(1);
         cfg.setConnectionTimeout(5000);
         cfg.setIdleTimeout(60000);
@@ -151,6 +154,26 @@ public class SqlStorage implements StorageBackend {
 
             while (rs.next()) {
                 list.add(rs.getString("key"));
+            }
+        }
+
+        return list;
+    }
+
+    @Override
+    public List<String> getKeysByPrefix(String prefix) throws Exception {
+        List<String> list = new ArrayList<>();
+        String sql = "SELECT `key` FROM `variables` WHERE `key` LIKE ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, prefix + "%");
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(rs.getString("key"));
+                }
             }
         }
 

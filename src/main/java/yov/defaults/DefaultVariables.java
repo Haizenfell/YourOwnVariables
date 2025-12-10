@@ -17,6 +17,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import yov.YOVPlugin;
 import yov.cache.VariableCache;
 import yov.service.VariableService;
@@ -62,8 +63,11 @@ public class DefaultVariables implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         Player p = event.getPlayer();
+
+        service.syncPlayerFromStorage(p.getName());
+
         String player = p.getName().toLowerCase(Locale.ROOT);
-        
+
         if (!defaults.isConfigurationSection("variables")) {
             return;
         }
@@ -90,4 +94,8 @@ public class DefaultVariables implements Listener {
         }
     }
 
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        service.flushNow();
+    }
 }

@@ -108,11 +108,17 @@ public class YOVPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+
+        if (variableService != null) {
+            variableService.setShuttingDown(true);
+        }
+
         try {
             if (variableService != null && variableService.getWriteQueue() != null) {
                 variableService.getWriteQueue().close();
             }
         } catch (Exception ignored) {}
+
         try {
             if (backend != null) backend.close();
         } catch (Exception e) {
@@ -122,9 +128,14 @@ public class YOVPlugin extends JavaPlugin {
     }
 
     public void registerPlaceholders() {
-        new VarPlaceholder(this, cache).register();
-        new VarPlayerKeyPlaceholder(this, cache).register();
-        new RoundedPlaceholder(this, cache).register();
+        if (variableService == null) {
+            getLogger().warning("Tried to register placeholders before VariableService was initialized.");
+            return;
+        }
+
+        new VarPlaceholder(this, variableService).register();
+        new VarPlayerKeyPlaceholder(this, variableService).register();
+        new RoundedPlaceholder(this, variableService).register();
     }
 
     private boolean setupServices() {

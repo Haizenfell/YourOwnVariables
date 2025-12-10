@@ -113,7 +113,7 @@ public class YOVCommand implements TabExecutor {
                     if (value != null) variableService.setVariable(key, value, sender, silent);
                 }
                 case "check" -> {
-                    String val = cache.get(key);
+                    String val = variableService.getSynchronizedValue(key);
                     sender.sendMessage(PREFIX + key + ": " + (val != null ? val : "null"));
                 }
                 default -> sender.sendMessage(PREFIX + "§cUnknown action: " + action);
@@ -140,7 +140,7 @@ public class YOVCommand implements TabExecutor {
 
         if (args.length == 2) {
             if (args[0].equalsIgnoreCase("migrate")) {
-                return filterList(Arrays.asList("sqlite", "mariadb", "yaml"), args[1]); // mysql удалён
+                return filterList(Arrays.asList("sqlite", "mariadb", "yaml"), args[1]);
             }
             if (args[0].equalsIgnoreCase("userclear")) {
                 List<String> players = new ArrayList<>();
