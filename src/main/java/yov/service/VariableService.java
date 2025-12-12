@@ -183,6 +183,37 @@ public class VariableService {
             return false;
         }
     }
+    private String normalizeDecimal(String s) {
+        if (s == null) return "0";
+        try {
+            java.math.BigDecimal bd = new java.math.BigDecimal(s.trim().replace(',', '.'));
+            bd = bd.setScale(5, java.math.RoundingMode.HALF_UP);
+            bd = bd.stripTrailingZeros();
+            String out = bd.toPlainString();
+            if (out.equals("-0")) out = "0";
+            return out;
+        } catch (Exception ignored) {
+            return s;
+        }
+    }
+    private String addDecimal(String a, String b) {
+        java.math.BigDecimal x = new java.math.BigDecimal(a.trim().replace(',', '.'));
+        java.math.BigDecimal y = new java.math.BigDecimal(b.trim().replace(',', '.'));
+        java.math.BigDecimal r = x.add(y).setScale(5, java.math.RoundingMode.HALF_UP).stripTrailingZeros();
+        String out = r.toPlainString();
+        if (out.equals("-0")) out = "0";
+        return out;
+    }
+
+    private String subDecimal(String a, String b) {
+        java.math.BigDecimal x = new java.math.BigDecimal(a.trim().replace(',', '.'));
+        java.math.BigDecimal y = new java.math.BigDecimal(b.trim().replace(',', '.'));
+        java.math.BigDecimal r = x.subtract(y).setScale(5, java.math.RoundingMode.HALF_UP).stripTrailingZeros();
+        String out = r.toPlainString();
+        if (out.equals("-0")) out = "0";
+        return out;
+    }
+
 
     private void modifyVariable(String key, String amountStr, CommandSender sender,
                                 boolean silent, boolean isAdd) {
@@ -209,12 +240,12 @@ public class VariableService {
                     return String.valueOf(result);
                 }
 
-                double current = Double.parseDouble(oldVal);
-                double delta = Double.parseDouble(amountStr);
-                double result = isAdd ? current + delta : current - delta;
+                String current = normalizeDecimal(oldVal);
+                String delta = normalizeDecimal(amountStr);
+                String result = isAdd ? addDecimal(current, delta) : subDecimal(current, delta);
 
                 markLocalWrite(k);
-                enqueueModify(k, String.valueOf(result));
+                enqueueModify(k, result);
 
                 if (!silent && sender != null) {
                     sender.sendMessage(prefix + "§aVariable '" + k + "' " +
@@ -222,7 +253,7 @@ public class VariableService {
                             " by " + delta + ". New value: " + result);
                 }
 
-                return String.valueOf(result);
+                return result;
 
             } catch (Exception e) {
                 if (!silent && sender != null) {

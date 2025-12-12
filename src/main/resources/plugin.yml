@@ -3,6 +3,7 @@ main: yov.YOVPlugin
 version: 4.6
 author: Haizenfell
 api-version: 1.13
+folia-supported: true
 depend: [PlaceholderAPI]
 
 commands:
