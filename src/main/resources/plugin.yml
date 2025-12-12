@@ -1,6 +1,6 @@
 name: YourOwnVariables
 main: yov.YOVPlugin
-version: 4.6
+version: 4.7
 author: Haizenfell
 api-version: 1.13
 folia-supported: true

@@ -60,33 +60,28 @@ public class VariableService {
         String prefixKey = playerName.toLowerCase(Locale.ROOT) + "_";
 
         try {
-            List<String> keys = backend.getKeysByPrefix(prefixKey);
+            Map<String, String> fromBackend = backend.getEntriesByPrefix(prefixKey);
             Map<String, String> map = cache.getMap();
 
-            List<String> toRemove = new ArrayList<>();
             for (String existingKey : map.keySet()) {
-                if (existingKey.startsWith(prefixKey) && !keys.contains(existingKey)) {
-                    toRemove.add(existingKey);
+                if (existingKey != null && existingKey.startsWith(prefixKey) && !fromBackend.containsKey(existingKey)) {
+                    map.remove(existingKey);
                 }
-            }
-            for (String k : toRemove) {
-                map.remove(k);
             }
 
-            for (String key : keys) {
-                String value = backend.get(key);
-                if (value != null) {
-                    map.put(key, value);
-                } else {
-                    map.remove(key);
-                }
+            for (Map.Entry<String, String> e : fromBackend.entrySet()) {
+                String k = e.getKey();
+                String v = e.getValue();
+                if (k == null) continue;
+                if (v == null) map.remove(k);
+                else map.put(k, v);
             }
 
         } catch (Exception e) {
-            logger.log(Level.WARNING,
-                    "Failed to sync variables from storage for player " + playerName, e);
+            logger.log(Level.WARNING, "Failed to sync variables from storage for player " + playerName, e);
         }
     }
+
 
     public String getSynchronizedValue(String rawKey) {
         if (rawKey == null) return null;

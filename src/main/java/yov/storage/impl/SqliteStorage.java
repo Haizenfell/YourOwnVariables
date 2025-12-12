@@ -17,6 +17,7 @@ public class SqliteStorage implements StorageBackend, BatchCapable {
     private PreparedStatement psGet;
     private PreparedStatement psDelete;
     private PreparedStatement psGetAll;
+    private PreparedStatement psGetAllEntries;
 
     private boolean inBatch = false;
 
@@ -75,6 +76,9 @@ public class SqliteStorage implements StorageBackend, BatchCapable {
         psGetAll = connection.prepareStatement(
                 "SELECT key FROM variables"
         );
+        psGetAllEntries = connection.prepareStatement(
+                "SELECT key, value FROM variables"
+        );
     }
 
     @Override
@@ -131,6 +135,42 @@ public class SqliteStorage implements StorageBackend, BatchCapable {
     }
 
     @Override
+    public java.util.Map<String, String> getAllEntries() throws Exception {
+        ensureConnection();
+        java.util.Map<String, String> out = new java.util.HashMap<>();
+        try (ResultSet rs = psGetAllEntries.executeQuery()) {
+            while (rs.next()) {
+                String k = rs.getString("key");
+                String v = rs.getString("value");
+                if (k != null && v != null) out.put(k, v);
+            }
+        }
+        return out;
+    }
+
+    @Override
+    public java.util.Map<String, String> getEntriesByPrefix(String prefix) throws Exception {
+        ensureConnection();
+        java.util.Map<String, String> out = new java.util.HashMap<>();
+        if (prefix == null) return out;
+
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT key, value FROM variables WHERE key LIKE ?"
+        )) {
+            ps.setString(1, prefix + "%");
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String k = rs.getString("key");
+                    String v = rs.getString("value");
+                    if (k != null && v != null) out.put(k, v);
+                }
+            }
+        }
+
+        return out;
+    }
+
+    @Override
     public void beginBatch() throws Exception {
         ensureConnection();
         if (!inBatch) {
@@ -161,6 +201,7 @@ public class SqliteStorage implements StorageBackend, BatchCapable {
         if (psGet != null) psGet.close();
         if (psDelete != null) psDelete.close();
         if (psGetAll != null) psGetAll.close();
+        if (psGetAllEntries != null) psGetAllEntries.close();
 
         if (connection != null && !connection.isClosed()) {
             if (inBatch) {

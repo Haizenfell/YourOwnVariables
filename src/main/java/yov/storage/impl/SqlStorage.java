@@ -167,6 +167,48 @@ public class SqlStorage implements StorageBackend {
             }
         }
     }
+    @Override
+    public java.util.Map<String, String> getAllEntries() throws Exception {
+        java.util.Map<String, String> out = new java.util.HashMap<>();
+        String sql = "SELECT `" + keyColumn + "`, `" + valueColumn + "` FROM `" + tableName + "`";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                String k = rs.getString(1);
+                String v = rs.getString(2);
+                if (k != null && v != null) out.put(k, v);
+            }
+        }
+
+        return out;
+    }
+
+    @Override
+    public java.util.Map<String, String> getEntriesByPrefix(String prefix) throws Exception {
+        java.util.Map<String, String> out = new java.util.HashMap<>();
+        if (prefix == null) return out;
+
+        String sql = "SELECT `" + keyColumn + "`, `" + valueColumn + "` FROM `" + tableName + "` WHERE `" + keyColumn + "` LIKE ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, prefix + "%");
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String k = rs.getString(1);
+                    String v = rs.getString(2);
+                    if (k != null && v != null) out.put(k, v);
+                }
+            }
+        }
+
+        return out;
+    }
 
     @Override
     public void delete(String key) throws Exception {

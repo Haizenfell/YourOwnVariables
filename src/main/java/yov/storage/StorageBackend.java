@@ -2,7 +2,9 @@ package yov.storage;
 
 import java.sql.Connection;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public interface StorageBackend {
 
@@ -25,6 +27,27 @@ public interface StorageBackend {
             }
         }
         return result;
+    }
+
+    default Map<String, String> getAllEntries() throws Exception {
+        Map<String, String> out = new HashMap<>();
+        for (String key : getAllKeys()) {
+            if (key == null) continue;
+            String val = get(key);
+            if (val != null) out.put(key, val);
+        }
+        return out;
+    }
+
+    default Map<String, String> getEntriesByPrefix(String prefix) throws Exception {
+        Map<String, String> out = new HashMap<>();
+        if (prefix == null) return out;
+        for (String key : getKeysByPrefix(prefix)) {
+            if (key == null) continue;
+            String val = get(key);
+            if (val != null) out.put(key, val);
+        }
+        return out;
     }
 
     Connection getConnection() throws Exception;

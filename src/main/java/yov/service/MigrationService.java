@@ -60,18 +60,19 @@ public class MigrationService {
             source.connect();
             target.connect();
 
-            sender.sendMessage(YOVPlugin.PREFIX + "§eCollecting keys from source...");
+            sender.sendMessage(YOVPlugin.PREFIX + "§eCollecting entries from source...");
 
-            List<String> keys = source.getAllKeys();
-            int total = keys.size();
+            var entries = source.getAllEntries();
+            int total = entries.size();
 
             sender.sendMessage(YOVPlugin.PREFIX + "§7Found §e" + total + " §7keys.");
 
             int migrated = 0;
 
-            for (String key : keys) {
-                String value = source.get(key);
-                if (value != null) {
+            for (var e : entries.entrySet()) {
+                String key = e.getKey();
+                String value = e.getValue();
+                if (key != null && value != null) {
                     target.set(key, value);
                     migrated++;
                 }

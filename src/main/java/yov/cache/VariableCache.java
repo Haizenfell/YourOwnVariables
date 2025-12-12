@@ -20,13 +20,17 @@ public class VariableCache {
     public void loadFromDatabase(StorageBackend backend) {
         try {
             int count = 0;
-            for (String key : backend.getAllKeys()) {
-                String value = backend.get(key);
-                if (value != null) {
-                    cache.put(key, value);
+            var entries = backend.getAllEntries();
+
+            for (var e : entries.entrySet()) {
+                String k = e.getKey();
+                String v = e.getValue();
+                if (k != null && v != null) {
+                    cache.put(k, v);
                     count++;
                 }
             }
+
             logger.info("Loaded " + count + " variables into cache.");
         } catch (Exception e) {
             logger.log(Level.WARNING, "Error loading cache from backend", e);

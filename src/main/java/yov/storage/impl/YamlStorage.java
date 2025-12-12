@@ -126,6 +126,85 @@ public class YamlStorage implements StorageBackend {
             }
         }
     }
+    @Override
+    public java.util.Map<String, String> getAllEntries() {
+        java.util.Map<String, String> out = new java.util.HashMap<>();
+
+        synchronized (lock) {
+            var globalSec = yaml.getConfigurationSection("global");
+            if (globalSec != null) {
+                for (String k : globalSec.getKeys(false)) {
+                    String v = yaml.getString("global." + k);
+                    if (k != null && v != null) out.put(k, v);
+                }
+            }
+
+            var playersSec = yaml.getConfigurationSection("players");
+            if (playersSec != null) {
+                for (String player : playersSec.getKeys(false)) {
+                    var sec = yaml.getConfigurationSection("players." + player);
+                    if (sec == null) continue;
+
+                    for (String var : sec.getKeys(false)) {
+                        String v = yaml.getString("players." + player + "." + var);
+                        String k = player + "_" + var;
+                        if (v != null) out.put(k, v);
+                    }
+                }
+            }
+        }
+
+        return out;
+    }
+
+    @Override
+    public java.util.Map<String, String> getEntriesByPrefix(String prefix) {
+        java.util.Map<String, String> out = new java.util.HashMap<>();
+        if (prefix == null) return out;
+
+        synchronized (lock) {
+            if (prefix.endsWith("_")) {
+                String player = prefix.substring(0, prefix.length() - 1);
+                var sec = yaml.getConfigurationSection("players." + player);
+                if (sec != null) {
+                    for (String var : sec.getKeys(false)) {
+                        String v = yaml.getString("players." + player + "." + var);
+                        if (v != null) out.put(player + "_" + var, v);
+                    }
+                }
+                return out;
+            }
+
+            var globalSec = yaml.getConfigurationSection("global");
+            if (globalSec != null) {
+                for (String k : globalSec.getKeys(false)) {
+                    if (!k.startsWith(prefix)) continue;
+                    String v = yaml.getString("global." + k);
+                    if (v != null) out.put(k, v);
+                }
+            }
+
+            var playersSec = yaml.getConfigurationSection("players");
+            if (playersSec != null) {
+                for (String player : playersSec.getKeys(false)) {
+                    String fullPrefix = player + "_";
+                    if (!(prefix.startsWith(fullPrefix) || fullPrefix.startsWith(prefix))) continue;
+
+                    var sec = yaml.getConfigurationSection("players." + player);
+                    if (sec == null) continue;
+
+                    for (String var : sec.getKeys(false)) {
+                        String k = player + "_" + var;
+                        if (!k.startsWith(prefix)) continue;
+                        String v = yaml.getString("players." + player + "." + var);
+                        if (v != null) out.put(k, v);
+                    }
+                }
+            }
+        }
+
+        return out;
+    }
 
     @Override
     public void delete(String key) throws Exception {
