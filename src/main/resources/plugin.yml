@@ -1,0 +1,19 @@
+name: YourOwnVariables
+main: yov.YOVPlugin
+version: 4.7
+author: Haizenfell
+api-version: 1.13
+folia-supported: true
+depend: [PlaceholderAPI]
+softdepend: [HuskSync]
+
+commands:
+  yov:
+    description: Variable Management
+    usage: "/<command> <help|reload|migrate|storage|set|rem|add|delete|check|userclear>"
+    aliases: [var]
+
+permissions:
+  yov.admin:
+    description: Allows the use of /yov commands
+    default: op
