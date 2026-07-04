@@ -4,15 +4,21 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import yov.YOVPlugin;
+import yov.api.YOVOperationResult;
 import yov.cache.VariableCache;
 import yov.husksync.HuskSyncVariableStore;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
@@ -21,6 +27,7 @@ public class VariableService {
 
     private static final String DELETE_MARKER = "\u0000DELETE";
     private static final String CLEAR_MARKER = "\u0000CLEAR";
+    private static final char CACHE_KEY_SEPARATOR = (char) 31;
 
     private final YOVPlugin plugin;
     private final VariableCache cache;
@@ -109,6 +116,144 @@ public class VariableService {
     public String getPlayerValue(String playerName, String variable) {
         String fullKey = toFullKey(playerName, variable);
         return fullKey == null ? null : cache.get(fullKey);
+    }
+
+    public List<String> knownVariableNames() {
+        Set<String> names = new TreeSet<>();
+
+        for (Map<String, String> variables : variablesByPlayer.values()) {
+            names.addAll(variables.keySet());
+        }
+
+        for (String key : cache.getMap().keySet()) {
+            String variable = variableFromFullKey(key);
+            if (variable != null) {
+                names.add(variable);
+            }
+        }
+
+        for (String variable : getDefaultVariables().keySet()) {
+            String normalized = normalizeVariable(variable);
+            if (normalized != null) {
+                names.add(normalized);
+            }
+        }
+
+        return new ArrayList<>(names);
+    }
+
+    public CompletableFuture<Optional<String>> getCurrentValue(String playerName, String variable) {
+        String playerLower = normalizePlayer(playerName);
+        String var = normalizeVariable(variable);
+        if (playerLower.isEmpty() || var == null) {
+            return CompletableFuture.completedFuture(Optional.empty());
+        }
+
+        String cached = getPlayerValue(playerLower, var);
+        if (cached != null || hasPlayerSnapshot(playerLower)) {
+            return CompletableFuture.completedFuture(Optional.ofNullable(cached));
+        }
+
+        return store.pullCurrent(playerLower).thenApply(variables -> Optional.ofNullable(variables.get(var)));
+    }
+
+    public CompletableFuture<Map<String, String>> getCurrentVariables(String playerName) {
+        String playerLower = normalizePlayer(playerName);
+        if (playerLower.isEmpty()) {
+            return CompletableFuture.completedFuture(Collections.emptyMap());
+        }
+
+        if (hasPlayerSnapshot(playerLower)) {
+            return CompletableFuture.completedFuture(snapshotPlayerVars(playerLower));
+        }
+
+        return store.pullCurrent(playerLower).thenApply(LinkedHashMap::new);
+    }
+
+    public CompletableFuture<YOVOperationResult> setVariable(String playerName, String variable, String value) {
+        String playerLower = normalizePlayer(playerName);
+        String var = normalizeVariable(variable);
+        if (playerLower.isEmpty() || var == null) {
+            return failedOperation("Invalid player or variable.");
+        }
+        if (value == null) {
+            return failedOperation("Value cannot be null.");
+        }
+
+        Player player = findOnlinePlayer(playerLower);
+        if (player != null) {
+            mutateOnline(player, var, value, false);
+            return CompletableFuture.completedFuture(
+                    YOVOperationResult.success("Variable set.", value, snapshotPlayerVars(playerLower)));
+        }
+
+        return store.editOffline(playerLower, variables -> {
+            variables.put(var, value);
+            cache.put(toFullKey(playerLower, var), value);
+            return new HuskSyncVariableStore.OfflineEditResult(true, value, variables);
+        }).thenApply(result -> operationResult(result, "Variable set."));
+    }
+
+    public CompletableFuture<YOVOperationResult> deleteVariable(String playerName, String variable) {
+        String playerLower = normalizePlayer(playerName);
+        String var = normalizeVariable(variable);
+        if (playerLower.isEmpty() || var == null) {
+            return failedOperation("Invalid player or variable.");
+        }
+
+        Player player = findOnlinePlayer(playerLower);
+        if (player != null) {
+            String previous = getPlayerValue(playerLower, var);
+            mutateOnline(player, var, null, true);
+            return CompletableFuture.completedFuture(
+                    YOVOperationResult.success("Variable deleted.", previous, snapshotPlayerVars(playerLower)));
+        }
+
+        return store.editOffline(playerLower, variables -> {
+            String previous = variables.remove(var);
+            cache.remove(toFullKey(playerLower, var));
+            return new HuskSyncVariableStore.OfflineEditResult(true, previous, variables);
+        }).thenApply(result -> operationResult(result, "Variable deleted."));
+    }
+
+    public CompletableFuture<YOVOperationResult> addVariable(String playerName, String variable, BigDecimal amount) {
+        return modifyNumber(playerName, variable, amount, true);
+    }
+
+    public CompletableFuture<YOVOperationResult> remVariable(String playerName, String variable, BigDecimal amount) {
+        return modifyNumber(playerName, variable, amount, false);
+    }
+
+    public CompletableFuture<YOVOperationResult> clearPlayerVariables(String playerName) {
+        String playerLower = normalizePlayer(playerName);
+        if (playerLower.isEmpty()) {
+            return failedOperation("Invalid player.");
+        }
+
+        Player player = findOnlinePlayer(playerLower);
+        if (player != null) {
+            Map<String, String> previous = variablesByPlayer.getOrDefault(playerLower, Collections.emptyMap());
+            int removed = previous.size();
+            variablesByPlayer.put(playerLower, new ConcurrentHashMap<>());
+            if (isPlayerLoaded(playerLower)) {
+                pendingByPlayer.remove(playerLower);
+            } else {
+                Map<String, String> pending = new ConcurrentHashMap<>();
+                pending.put(CLEAR_MARKER, DELETE_MARKER);
+                pendingByPlayer.put(playerLower, pending);
+            }
+            removeCacheForPlayer(playerLower);
+            store.pushOnline(player, Collections.emptyMap());
+            return CompletableFuture.completedFuture(
+                    YOVOperationResult.success("Variables cleared.", String.valueOf(removed), Collections.emptyMap()));
+        }
+
+        return store.editOffline(playerLower, variables -> {
+            int removed = variables.size();
+            variables.clear();
+            removeCacheForPlayer(playerLower);
+            return new HuskSyncVariableStore.OfflineEditResult(true, String.valueOf(removed), variables);
+        }).thenApply(result -> operationResult(result, "Variables cleared."));
     }
 
     public void checkVariable(String playerName, String variable, CommandSender sender) {
@@ -237,6 +382,51 @@ public class VariableService {
         }
     }
 
+    private CompletableFuture<YOVOperationResult> modifyNumber(String playerName,
+                                                               String variable,
+                                                               BigDecimal amount,
+                                                               boolean add) {
+        String playerLower = normalizePlayer(playerName);
+        String var = normalizeVariable(variable);
+        if (playerLower.isEmpty() || var == null) {
+            return failedOperation("Invalid player or variable.");
+        }
+        if (amount == null) {
+            return failedOperation("Amount cannot be null.");
+        }
+
+        Player player = findOnlinePlayer(playerLower);
+        if (player != null) {
+            String current = getPlayerValue(playerLower, var);
+            BigDecimal currentNumber;
+            try {
+                currentNumber = current == null ? BigDecimal.ZERO : parseDecimal(current);
+            } catch (NumberFormatException ex) {
+                return failedOperation("Variable '" + var + "' is not numeric.");
+            }
+
+            String result = formatDecimal(add ? currentNumber.add(amount) : currentNumber.subtract(amount));
+            mutateOnline(player, var, result, false);
+            return CompletableFuture.completedFuture(
+                    YOVOperationResult.success("Variable updated.", result, snapshotPlayerVars(playerLower)));
+        }
+
+        return store.editOffline(playerLower, variables -> {
+            String current = variables.get(var);
+            BigDecimal currentNumber;
+            try {
+                currentNumber = current == null ? BigDecimal.ZERO : parseDecimal(current);
+            } catch (NumberFormatException ex) {
+                return HuskSyncVariableStore.OfflineEditResult.fail("Variable '" + var + "' is not numeric.");
+            }
+
+            String result = formatDecimal(add ? currentNumber.add(amount) : currentNumber.subtract(amount));
+            variables.put(var, result);
+            cache.put(toFullKey(playerLower, var), result);
+            return new HuskSyncVariableStore.OfflineEditResult(true, result, variables);
+        }).thenApply(result -> operationResult(result, "Variable updated."));
+    }
+
     private void modifyNumber(String playerName,
                               String variable,
                               String amount,
@@ -246,6 +436,11 @@ public class VariableService {
         String playerLower = normalizePlayer(playerName);
         String var = normalizeVariable(variable);
         BigDecimal delta;
+
+        if (playerLower.isEmpty() || var == null) {
+            send(sender, silent, "§cInvalid player or variable.");
+            return;
+        }
 
         try {
             delta = parseDecimal(amount);
@@ -330,6 +525,17 @@ public class VariableService {
         }));
     }
 
+    private CompletableFuture<YOVOperationResult> failedOperation(String message) {
+        return CompletableFuture.completedFuture(YOVOperationResult.failure(message));
+    }
+
+    private YOVOperationResult operationResult(HuskSyncVariableStore.OfflineEditResult result, String successMessage) {
+        if (!result.success()) {
+            return YOVOperationResult.failure(result.message());
+        }
+        return YOVOperationResult.success(successMessage, result.message(), result.variables());
+    }
+
     private void applyPending(Map<String, String> variables, Map<String, String> pending) {
         if (pending.containsKey(CLEAR_MARKER)) {
             variables.clear();
@@ -391,7 +597,7 @@ public class VariableService {
     }
 
     private void removeCacheForPlayer(String playerLower) {
-        String keyPrefix = playerLower + "_";
+        String keyPrefix = playerLower + CACHE_KEY_SEPARATOR;
         cache.getMap().keySet().removeIf(key -> key != null && key.startsWith(keyPrefix));
     }
 
@@ -436,7 +642,18 @@ public class VariableService {
         String playerLower = normalizePlayer(playerName);
         String var = normalizeVariable(variable);
         if (playerLower.isEmpty() || var == null) return null;
-        return playerLower + "_" + var;
+        return playerLower + CACHE_KEY_SEPARATOR + var;
+    }
+
+    private String variableFromFullKey(String fullKey) {
+        if (fullKey == null) return null;
+
+        int split = fullKey.indexOf(CACHE_KEY_SEPARATOR);
+        if (split < 0 || split + 1 >= fullKey.length()) {
+            return null;
+        }
+
+        return fullKey.substring(split + 1);
     }
 
     private BigDecimal parseDecimal(String raw) {

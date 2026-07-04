@@ -3,6 +3,20 @@
 YOV stores player-bound variables in HuskSync custom data and exposes them through PlaceholderAPI.
 The plugin is intended to be installed on every server in the network so all dependent plugins read the same player data.
 
+## Plugin API
+
+Other plugins can access YOV variables directly through the Java API instead of resolving PlaceholderAPI placeholders.
+The API is registered in Bukkit `ServicesManager` as `yov.api.YOVApi`.
+
+```java
+RegisteredServiceProvider<YOVApi> registration =
+        Bukkit.getServicesManager().getRegistration(YOVApi.class);
+
+YOVApi yov = registration != null ? registration.getProvider() : null;
+```
+
+Full API documentation is bundled as `API.md` in the plugin resources: `src/main/resources/API.md`.
+
 ## Requirements
 
 - Paper `26.1.2.build.72-stable`

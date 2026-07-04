@@ -9,7 +9,6 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import yov.YOVPlugin;
-import yov.cache.VariableCache;
 import yov.service.VariableService;
 
 import java.util.ArrayList;
@@ -21,12 +20,10 @@ public class YOVCommand implements TabExecutor {
 
     private final YOVPlugin plugin;
     private final VariableService variableService;
-    private final VariableCache cache;
 
-    public YOVCommand(YOVPlugin plugin, VariableService variableService, VariableCache cache) {
+    public YOVCommand(YOVPlugin plugin, VariableService variableService) {
         this.plugin = plugin;
         this.variableService = variableService;
-        this.cache = cache;
     }
 
     @Override
@@ -197,14 +194,7 @@ public class YOVCommand implements TabExecutor {
     }
 
     private List<String> variableNames() {
-        List<String> names = new ArrayList<>();
-        for (String key : cache.getMap().keySet()) {
-            int split = key.indexOf('_');
-            if (split >= 0 && split + 1 < key.length()) {
-                names.add(key.substring(split + 1));
-            }
-        }
-        return names.stream().distinct().sorted().toList();
+        return variableService.knownVariableNames();
     }
 
     private List<String> onlinePlayers(String prefix) {

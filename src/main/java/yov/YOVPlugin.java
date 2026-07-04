@@ -5,7 +5,10 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.event.HandlerList;
+import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
+import yov.api.YOVApi;
+import yov.api.YOVApiImpl;
 import yov.cache.VariableCache;
 import yov.command.YOVCommand;
 import yov.defaults.DefaultVariables;
@@ -28,6 +31,7 @@ public class YOVPlugin extends JavaPlugin {
     private VariableCache variableCache;
     private VariableService variableService;
     private HuskSyncVariableStore variableStore;
+    private YOVApi api;
 
     private VarPlayerKeyPlaceholder varPlayerKeyPlaceholder;
     private RoundedPlaceholder roundedPlaceholder;
@@ -51,6 +55,7 @@ public class YOVPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         HandlerList.unregisterAll(this);
+        unregisterApi();
 
         try {
             if (varPlayerKeyPlaceholder != null) varPlayerKeyPlaceholder.unregister();
@@ -70,6 +75,10 @@ public class YOVPlugin extends JavaPlugin {
 
     public VariableService getVariableService() {
         return variableService;
+    }
+
+    public YOVApi getApi() {
+        return api;
     }
 
     public VariableCache getVariableCache() {
@@ -92,6 +101,7 @@ public class YOVPlugin extends JavaPlugin {
         sender.sendMessage(PREFIX + "§eReloading...");
 
         HandlerList.unregisterAll(this);
+        unregisterApi();
         if (variableStore != null) {
             variableStore.close();
         }
@@ -144,6 +154,7 @@ public class YOVPlugin extends JavaPlugin {
 
         variableService = new VariableService(this, variableCache, variableStore, getLogger(), PREFIX);
         loadOnlinePlayers();
+        registerApi();
         return true;
     }
 
@@ -157,7 +168,7 @@ public class YOVPlugin extends JavaPlugin {
         PluginCommand cmd = getCommand("yov");
         if (cmd == null) return;
 
-        YOVCommand executor = new YOVCommand(this, variableService, variableCache);
+        YOVCommand executor = new YOVCommand(this, variableService);
         cmd.setExecutor(executor);
         cmd.setTabCompleter(executor);
         cmd.setAliases(java.util.List.of());
@@ -170,6 +181,20 @@ public class YOVPlugin extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(papiListener, this);
         Bukkit.getPluginManager().registerEvents(new HuskSyncYovListener(variableService, variableStore), this);
         Bukkit.getPluginManager().registerEvents(new DefaultVariables(this, variableService), this);
+    }
+
+    private void registerApi() {
+        unregisterApi();
+        api = new YOVApiImpl(this);
+        Bukkit.getServicesManager().register(YOVApi.class, api, this, ServicePriority.Normal);
+    }
+
+    private void unregisterApi() {
+        if (api == null) {
+            return;
+        }
+        Bukkit.getServicesManager().unregister(YOVApi.class, api);
+        api = null;
     }
 
     private void removeCommandAliases(PluginCommand command) {

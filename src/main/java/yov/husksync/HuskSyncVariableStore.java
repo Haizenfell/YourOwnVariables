@@ -164,7 +164,7 @@ public class HuskSyncVariableStore {
             writeVariables(snapshot, variables);
             snapshot.setId(java.util.UUID.randomUUID());
             api.setCurrentData(user, snapshot);
-            return OfflineEditResult.success(variables);
+            return new OfflineEditResult(true, result.message(), variables);
         });
     }
 
