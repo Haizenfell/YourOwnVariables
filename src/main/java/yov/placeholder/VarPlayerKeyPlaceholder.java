@@ -7,21 +7,19 @@ import org.jetbrains.annotations.Nullable;
 import yov.YOVPlugin;
 import yov.service.VariableService;
 
-import java.util.Locale;
-
 public class VarPlayerKeyPlaceholder extends PlaceholderExpansion {
 
-    private final VariableService variableService;
     private final YOVPlugin plugin;
+    private final VariableService variableService;
 
     public VarPlayerKeyPlaceholder(YOVPlugin plugin, VariableService variableService) {
-        this.variableService = variableService;
         this.plugin = plugin;
+        this.variableService = variableService;
     }
 
     @Override
     public @NotNull String getIdentifier() {
-        return "yov_player_key";
+        return "yov";
     }
 
     @Override
@@ -40,17 +38,12 @@ public class VarPlayerKeyPlaceholder extends PlaceholderExpansion {
     }
 
     @Override
-    public boolean canRegister() {
-        return true;
-    }
-
-    @Override
     public @Nullable String onPlaceholderRequest(@Nullable Player player, @NotNull String identifier) {
-        if (player == null) return "null";
+        if (player == null || identifier.isBlank()) return "null";
+        if (!identifier.startsWith("player_key:")) return "null";
 
-        String fullKey = (player.getName() + "_" + identifier).toLowerCase(Locale.ROOT);
-
-        String val = variableService.getSynchronizedValue(fullKey);
-        return val != null ? val : "null";
+        String variable = identifier.substring("player_key:".length());
+        String value = variableService.getPlayerValue(player.getName(), variable);
+        return value != null ? value : "null";
     }
 }

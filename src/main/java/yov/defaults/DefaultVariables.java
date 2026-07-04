@@ -7,31 +7,83 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.scheduler.BukkitRunnable;
 import yov.YOVPlugin;
-import yov.cache.VariableCache;
 import yov.service.VariableService;
 
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.util.Locale;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class DefaultVariables implements Listener {
 
     private final YOVPlugin plugin;
-    private final VariableCache cache;
     private final VariableService service;
     private FileConfiguration defaults;
 
-    public DefaultVariables(YOVPlugin plugin, VariableCache cache, VariableService service) {
+    public DefaultVariables(YOVPlugin plugin, VariableService service) {
         this.plugin = plugin;
-        this.cache = cache;
         this.service = service;
-
         loadDefaults();
-        Bukkit.getPluginManager().registerEvents(this, plugin);
+        service.setDefaultVariablesSupplier(this::getDefaults);
+
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            Map<String, String> defaultValues = getDefaults();
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                service.applyDefaults(player, defaultValues);
+            }
+        });
+    }
+
+    @EventHandler
+    public void onJoin(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
+        int timeoutTicks = Math.max(1, plugin.getConfig().getInt("defaults.apply-timeout-ticks", 100));
+
+        new BukkitRunnable() {
+            private int waited;
+
+            @Override
+            public void run() {
+                if (!player.isOnline()) {
+                    cancel();
+                    return;
+                }
+
+                if (service.isPlayerLoaded(player.getName())) {
+                    service.applyDefaults(player, getDefaults());
+                    cancel();
+                    return;
+                }
+
+                if (waited >= timeoutTicks) {
+                    plugin.getLogger().warning("Default variables were not applied to " + player.getName()
+                            + " because HuskSync data was not loaded after " + timeoutTicks + " ticks.");
+                    cancel();
+                    return;
+                }
+
+                waited++;
+            }
+        }.runTaskTimer(plugin, 1L, 1L);
+    }
+
+    private Map<String, String> getDefaults() {
+        Map<String, String> values = new LinkedHashMap<>();
+        if (!defaults.isConfigurationSection("player_variables")) return values;
+
+        var section = defaults.getConfigurationSection("player_variables");
+        if (section == null) return values;
+
+        for (String key : section.getKeys(false)) {
+            String value = section.getString(key);
+            if (key != null && value != null) {
+                values.put(key, value);
+            }
+        }
+        return values;
     }
 
     private void loadDefaults() {
@@ -42,77 +94,14 @@ public class DefaultVariables implements Listener {
             try (InputStream in = plugin.getResource("default_variables.yml")) {
                 if (in != null) {
                     Files.copy(in, file.toPath());
-                } else {
-                    file.createNewFile();
+                } else if (!file.createNewFile()) {
+                    Bukkit.getLogger().warning("[YOV] Could not create default_variables.yml");
                 }
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                plugin.getLogger().warning("Failed to create default_variables.yml: " + e.getMessage());
             }
         }
 
         defaults = YamlConfiguration.loadConfiguration(file);
-    }
-
-    @EventHandler
-    public void onJoin(PlayerJoinEvent event) {
-        Player p = event.getPlayer();
-        String playerLower = p.getName().toLowerCase(Locale.ROOT);
-
-        new BukkitRunnable() {
-            int ticks = 0;
-
-            @Override
-            public void run() {
-                if (!p.isOnline()) {
-                    cancel();
-                    return;
-                }
-                if (service.isPlayerLoaded(playerLower)) {
-                    applyDefaults(p);
-                    cancel();
-                    return;
-                }
-                ticks += 1;
-                if (ticks >= 100) {
-                    applyDefaults(p);
-                    cancel();
-                }
-            }
-        }.runTaskTimer(plugin, 1L, 1L);
-    }
-
-    private void applyDefaults(Player p) {
-        service.syncPlayerFromStorage(p.getName());
-
-        if (!defaults.isConfigurationSection("variables")) {
-            return;
-        }
-
-        var section = defaults.getConfigurationSection("variables");
-        if (section == null) {
-            return;
-        }
-
-        var keys = section.getKeys(false);
-        if (keys == null || keys.isEmpty()) {
-            return;
-        }
-
-        String player = p.getName().toLowerCase(Locale.ROOT);
-
-        for (String var : keys) {
-            String fullKey = player + "_" + var.toLowerCase(Locale.ROOT);
-
-            if (cache.get(fullKey) != null) continue;
-
-            String value = section.getString(var);
-            if (value == null) continue;
-
-            service.setVariable(fullKey, value, null, true);
-        }
-    }
-
-    @EventHandler
-    public void onQuit(PlayerQuitEvent event) {
-        service.flushNow();
     }
 }

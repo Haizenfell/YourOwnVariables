@@ -1,145 +1,97 @@
-# **YourOwnVariables (YOV)**
-A flexible and powerful variable management system for Minecraft servers.
+# YourOwnVariables (YOV)
 
----
+YOV stores player-bound variables in HuskSync custom data and exposes them through PlaceholderAPI.
+The plugin is intended to be installed on every server in the network so all dependent plugins read the same player data.
 
-**Requires:** [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/)  
-Works on all Spigot/Paper versions **1.16.5 – 1.21.11**
+## Requirements
 
----
+- Paper `26.1.2.build.72-stable`
+- PlaceholderAPI
+- HuskSync v3 API
+- Java 25+ runtime; build tested with JDK 26
 
-## ✨ **Features**
+`PlaceholderAPI` and `HuskSync` are hard dependencies.
 
-### ✔ Global Variables
-- `%yov_<variable>%`
+## Storage Model
 
-### ✔ Player Variables
-- Stored as: `<player>_<variable>`
-- Accessed via: `%yov_player_key:<variable>%`
+YOV variables are stored per player inside HuskSync under the custom data identifier:
 
-### ✔ Storage Migration System
-```bash
-/yov migrate <from> <to>
+```text
+yov:variables
 ```
 
-### ✔ Commands
-- `/yov help`
-- `/yov reload`
-- `/yov set <variable> <value> [player] [-s]`
-- `/yov add <variable> <amount> [player] [-s]`
-- `/yov rem <variable> <amount> [player] [-s]`
-- `/yov delete <variable> [player] [-s]`
-- `/yov check <variable> [player]`
-- `/yov migrate <from> <to>`
-- `/yov userclear <player>`
+There is no YAML, SQLite, MariaDB, global storage, or migration layer anymore. Player data is synchronized by HuskSync snapshots/current data.
 
----
+## Commands
 
-## 🧩 **Commands & Usage**
+All commands require `yov.admin`.
 
-### Creating variables
-```bash
-/yov set test 1
-/yov set test 1.0
-/yov set test hello world
-/yov set level 5 playerName
+```text
+/yov reload
+/yov set <variable> <value> [player] [-s]
+/yov add <variable> <amount> [player] [-s]
+/yov rem <variable> <amount> [player] [-s]
+/yov delete <variable> [player] [-s]
+/yov check <variable> [player]
+/yov userclear <player>
 ```
 
-### Modifying variables
-```bash
-/yov add test 5
-/yov rem test 1
-/yov delete test
+Behavior:
+
+- If `[player]` is omitted, the sender must be a player and the command targets the sender.
+- Console must always specify `[player]`.
+- `-s` suppresses command feedback.
+- `set` stores values as strings.
+- `add` and `rem` require numeric values and use decimal-safe arithmetic.
+- Offline or cross-server players are updated through HuskSync current data.
+
+Examples:
+
+```text
+/yov set coins 100 Steve
+/yov add coins 25 Steve -s
+/yov rem coins 10 Steve
+/yov delete coins Steve
+/yov check coins Steve
+/yov userclear Steve
 ```
 
-### Silent mode
-```bash
-/yov add test 1 player -s
-```
+## Placeholders
 
----
-
-## 🔍 **Checking Variables**
-```bash
-/yov check test
-/yov check playerName_coins
-```
-
----
-
-## 🔗 **PlaceholderAPI Usage**
-
-**Global variable**
-```bash
-%yov_test%
-```
-
-**Player variable**
-```bash
+```text
 %yov_player_key:coins%
-```
-
-**Rounded values**
-```bash
-%rounded:coins%
-%rounded_1:coins%
-%rounded_2:coins%
 %rounded_player_key:coins%
 %rounded_player_key_2:coins%
 ```
 
----
+Global/local placeholders such as `%yov_coins%` are intentionally not supported.
+Rounded placeholders use `HALF_UP` rounding. Missing or non-numeric values return `null`.
 
-## 📦 **Default variables**
+## Default Variables
+
+Defaults are configured in `default_variables.yml` and are applied once after the player's HuskSync data has loaded.
+Existing values are not overwritten.
+
 ```yml
-variables:
+player_variables:
+  coins: "0"
   claim_points: "200"
 ```
 
----
+## Permissions
 
-## ⚙️ **Integration Example (ConditionalEvents)**
+| Permission | Default | Description |
+| --- | --- | --- |
+| `yov.admin` | `op` | Full access to `/yov` commands |
+
+## Config
+
 ```yml
-conditions:
-  check-level: '%yov_player_key:level% >= 20'
+husksync:
+  unload-delay-ticks: 40
+
+defaults:
+  apply-timeout-ticks: 100
 ```
 
-**Dynamic variable creation**
-```bash
-/yov set example 1 %player_name% -s
-```
-
----
-
-## 🔑 **Permissions**
-
-| Permission  | Description |
-|------------|------------|
-| `yov.admin` | Full access |
-
----
-
-## 💾 **Storage Types**
-
-Supports:
-- YAML
-- SQLite
-- MariaDB
-
-Switch storage:
-```bash
-/yov migrate <old> <new>
-```
-
----
-
-## 📁 **YAML Structure Example**
-```yml
-global:
-  season: "1"
-
-players:
-  haizenfell:
-    coins: "500"
-    kills: "10"
-```
+`unload-delay-ticks` keeps player variables cached briefly after quit so HuskSync save events can complete.

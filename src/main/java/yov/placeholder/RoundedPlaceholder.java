@@ -7,12 +7,13 @@ import org.jetbrains.annotations.Nullable;
 import yov.YOVPlugin;
 import yov.service.VariableService;
 
-import java.util.Locale;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 public class RoundedPlaceholder extends PlaceholderExpansion {
 
-    private final VariableService variableService;
     private final YOVPlugin plugin;
+    private final VariableService variableService;
 
     public RoundedPlaceholder(YOVPlugin plugin, VariableService variableService) {
         this.plugin = plugin;
@@ -40,46 +41,46 @@ public class RoundedPlaceholder extends PlaceholderExpansion {
     }
 
     @Override
-    public boolean canRegister() {
-        return true;
-    }
-
-    @Override
     public @Nullable String onPlaceholderRequest(@Nullable Player player, @NotNull String identifier) {
-        if (identifier.isEmpty()) return null;
+        if (player == null || identifier.isBlank()) return "null";
+
+        ParsedRounded parsed = parse(identifier);
+        if (parsed == null) return "null";
+
+        String value = variableService.getPlayerValue(player.getName(), parsed.variable());
+        if (value == null) return "null";
 
         try {
-            int decimals = 0;
-            boolean isPlayerKey = identifier.startsWith("player_key");
-            String keyPart = identifier;
-
-            if (isPlayerKey) {
-                keyPart = identifier.substring("player_key".length());
-            }
-
-            if (keyPart.startsWith("_")) {
-                String[] split = keyPart.substring(1).split(":", 2);
-                try {
-                    decimals = Integer.parseInt(split[0]);
-                } catch (NumberFormatException ignored) {}
-                keyPart = ":" + split[1];
-            }
-
-            if (!keyPart.startsWith(":")) return "null";
-
-            String key = keyPart.substring(1);
-            if (isPlayerKey && player != null) {
-                key = player.getName().toLowerCase(Locale.ROOT) + "_" + key.toLowerCase(Locale.ROOT);
-            }
-
-            String value = variableService.getSynchronizedValue(key.toLowerCase(Locale.ROOT));
-            if (value == null || value.equals("null")) return "null";
-
-            double num = Double.parseDouble(value);
-            String pattern = "%." + decimals + "f";
-            return String.format(Locale.ROOT, pattern, num);
-        } catch (Exception e) {
+            return new BigDecimal(value.trim())
+                    .setScale(parsed.decimals(), RoundingMode.HALF_UP)
+                    .toPlainString();
+        } catch (NumberFormatException ex) {
             return "null";
         }
+    }
+
+    private ParsedRounded parse(String identifier) {
+        if (!identifier.startsWith("player_key")) return null;
+
+        String tail = identifier.substring("player_key".length());
+        if (tail.startsWith(":")) {
+            String variable = tail.substring(1);
+            return variable.isBlank() ? null : new ParsedRounded(variable, 0);
+        }
+
+        if (!tail.startsWith("_")) return null;
+        String[] split = tail.substring(1).split(":", 2);
+        if (split.length != 2 || split[1].isBlank()) return null;
+
+        try {
+            int decimals = Integer.parseInt(split[0]);
+            if (decimals < 0 || decimals > 10) return null;
+            return new ParsedRounded(split[1], decimals);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private record ParsedRounded(String variable, int decimals) {
     }
 }

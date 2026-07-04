@@ -1,28 +1,22 @@
 package yov;
 
 import org.bukkit.Bukkit;
+import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
-import yov.async.WriteQueue;
 import yov.cache.VariableCache;
 import yov.command.YOVCommand;
 import yov.defaults.DefaultVariables;
+import yov.husksync.HuskSyncVariableStore;
+import yov.husksync.HuskSyncYovListener;
 import yov.listener.PapiExpansionListener;
-import yov.listener.PreLoginLoadListener;
 import yov.placeholder.RoundedPlaceholder;
-import yov.placeholder.VarPlaceholder;
 import yov.placeholder.VarPlayerKeyPlaceholder;
-import yov.service.MigrationService;
 import yov.service.VariableService;
-import yov.storage.StorageBackend;
-import yov.storage.StorageManager;
-import yov.storage.StorageType;
-import yov.sync.NoopPlayerVariableSync;
-import yov.sync.PlayerVariableSync;
 
-import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class YOVPlugin extends JavaPlugin {
@@ -33,55 +27,41 @@ public class YOVPlugin extends JavaPlugin {
 
     private VariableCache variableCache;
     private VariableService variableService;
-    private MigrationService migrationService;
+    private HuskSyncVariableStore variableStore;
 
-    private StorageBackend backend;
-    private WriteQueue writeQueue;
-    private StorageType storageType;
-
-    private PlayerVariableSync playerSync = new NoopPlayerVariableSync();
-
-    private VarPlaceholder varPlaceholder;
     private VarPlayerKeyPlaceholder varPlayerKeyPlaceholder;
     private RoundedPlaceholder roundedPlaceholder;
 
     @Override
     public void onEnable() {
         instance = this;
-
         saveDefaultConfig();
 
         if (!setupServices()) {
-            getLogger().severe("Failed to initialize storage. Disabling plugin.");
+            getLogger().severe("Failed to initialize YOV. Disabling plugin.");
             Bukkit.getPluginManager().disablePlugin(this);
             return;
         }
 
         registerCommand();
-        refreshRuntimeListeners();
+        registerRuntimeListeners();
+        registerPlaceholders();
     }
 
     @Override
     public void onDisable() {
-        try {
-            if (variableService != null) {
-                variableService.setShuttingDown(true);
-                variableService.flushNow();
-            }
-        } catch (Exception ignored) {
-        }
-
-        try {
-            if (writeQueue != null) writeQueue.close();
-        } catch (Exception ignored) {
-        }
-
-        try {
-            if (backend != null) backend.close();
-        } catch (Exception ignored) {
-        }
-
         HandlerList.unregisterAll(this);
+
+        try {
+            if (varPlayerKeyPlaceholder != null) varPlayerKeyPlaceholder.unregister();
+            if (roundedPlaceholder != null) roundedPlaceholder.unregister();
+        } catch (Exception ignored) {
+        }
+
+        try {
+            if (variableStore != null) variableStore.close();
+        } catch (Exception ignored) {
+        }
     }
 
     public static YOVPlugin getInstance() {
@@ -96,6 +76,10 @@ public class YOVPlugin extends JavaPlugin {
         return variableCache;
     }
 
+    public HuskSyncVariableStore getVariableStore() {
+        return variableStore;
+    }
+
     public String getPluginVersion() {
         return getDescription().getVersion();
     }
@@ -104,167 +88,154 @@ public class YOVPlugin extends JavaPlugin {
         return getDescription().getAuthors().stream().collect(Collectors.joining(", "));
     }
 
-    public String getStorageType() {
-        return storageType != null ? storageType.name().toLowerCase(Locale.ROOT) : "unknown";
-    }
-
     public void reloadYOV(CommandSender sender) {
         sender.sendMessage(PREFIX + "§eReloading...");
 
         HandlerList.unregisterAll(this);
-
-        try {
-            if (variableService != null) {
-                variableService.setShuttingDown(true);
-                variableService.flushNow();
-            }
-        } catch (Exception ignored) {
+        if (variableStore != null) {
+            variableStore.close();
         }
-
-        try {
-            if (writeQueue != null) writeQueue.close();
-        } catch (Exception ignored) {
-        }
-
-        try {
-            if (backend != null) backend.close();
-        } catch (Exception ignored) {
-        }
-
         reloadConfig();
 
         if (!setupServices()) {
-            sender.sendMessage(PREFIX + "§cReload failed: storage init error. See console.");
+            sender.sendMessage(PREFIX + "§cReload failed. See console.");
             return;
         }
 
         registerCommand();
-        refreshRuntimeListeners();
+        registerRuntimeListeners();
+        registerPlaceholders();
 
-        sender.sendMessage(PREFIX + "§aReload complete! Storage: §e" + getStorageType());
+        sender.sendMessage(PREFIX + "§aReload complete.");
+    }
+
+    public void registerPlaceholders() {
+        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") == null) {
+            getLogger().severe("PlaceholderAPI is required but not installed.");
+            return;
+        }
+
+        try {
+            if (varPlayerKeyPlaceholder != null) varPlayerKeyPlaceholder.unregister();
+            if (roundedPlaceholder != null) roundedPlaceholder.unregister();
+        } catch (Exception ignored) {
+        }
+
+        varPlayerKeyPlaceholder = new VarPlayerKeyPlaceholder(this, variableService);
+        roundedPlaceholder = new RoundedPlaceholder(this, variableService);
+
+        varPlayerKeyPlaceholder.register();
+        roundedPlaceholder.register();
+    }
+
+    private boolean setupServices() {
+        if (Bukkit.getPluginManager().getPlugin("HuskSync") == null) {
+            getLogger().severe("HuskSync is required but not installed.");
+            return false;
+        }
+
+        variableCache = new VariableCache(getLogger());
+        variableStore = new HuskSyncVariableStore(this);
+
+        if (!variableStore.connect()) {
+            getLogger().severe("Could not connect to HuskSync API.");
+            return false;
+        }
+
+        variableService = new VariableService(this, variableCache, variableStore, getLogger(), PREFIX);
+        loadOnlinePlayers();
+        return true;
+    }
+
+    private void loadOnlinePlayers() {
+        for (org.bukkit.entity.Player player : Bukkit.getOnlinePlayers()) {
+            variableService.replacePlayerVariables(player.getName(), variableStore.readOnline(player));
+        }
     }
 
     private void registerCommand() {
         PluginCommand cmd = getCommand("yov");
         if (cmd == null) return;
 
-        YOVCommand executor = new YOVCommand(this, variableService, variableCache, migrationService);
+        YOVCommand executor = new YOVCommand(this, variableService, variableCache);
         cmd.setExecutor(executor);
         cmd.setTabCompleter(executor);
+        cmd.setAliases(java.util.List.of());
+
+        removeCommandAliases(cmd);
     }
 
-    public void registerPlaceholders() {
-        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") == null) return;
-
-        try {
-            if (varPlaceholder != null) varPlaceholder.unregister();
-            if (varPlayerKeyPlaceholder != null) varPlayerKeyPlaceholder.unregister();
-            if (roundedPlaceholder != null) roundedPlaceholder.unregister();
-        } catch (Exception ignored) {
-        }
-
-        varPlaceholder = new VarPlaceholder(this, variableService);
-        varPlayerKeyPlaceholder = new VarPlayerKeyPlaceholder(this, variableService);
-        roundedPlaceholder = new RoundedPlaceholder(this, variableService);
-
-        varPlaceholder.register();
-        varPlayerKeyPlaceholder.register();
-        roundedPlaceholder.register();
-    }
-
-    private void refreshRuntimeListeners() {
-        HandlerList.unregisterAll(this);
-
+    private void registerRuntimeListeners() {
         PapiExpansionListener papiListener = new PapiExpansionListener(this);
         Bukkit.getPluginManager().registerEvents(papiListener, this);
-
-        Bukkit.getPluginManager().registerEvents(new PreLoginLoadListener(variableService), this);
-
-        new DefaultVariables(this, variableCache, variableService);
-
-        if (storageType == StorageType.HUSKSYNC) {
-            try {
-                Class<?> storageCls = Class.forName("yov.storage.impl.HuskSyncStorage");
-                if (storageCls.isInstance(backend)) {
-                    Object listener = Class.forName("yov.husksync.HuskSyncYovListener")
-                            .getConstructor(Class.forName("yov.service.VariableService"), storageCls)
-                            .newInstance(variableService, backend);
-                    Bukkit.getPluginManager().registerEvents((org.bukkit.event.Listener) listener, this);
-                }
-            } catch (Throwable e) {
-                getLogger().severe("Failed to register HuskSync listener: " + e.getMessage());
-                e.printStackTrace();
-            }
-        }
-
-        papiListener.registerAll();
+        Bukkit.getPluginManager().registerEvents(new HuskSyncYovListener(variableService, variableStore), this);
+        Bukkit.getPluginManager().registerEvents(new DefaultVariables(this, variableService), this);
     }
 
-    private boolean setupServices() {
-        variableCache = new VariableCache(getLogger());
-
-        storageType = StorageType.fromString(getConfig().getString("storage.type", "sqlite"));
-
-        if (storageType == StorageType.HUSKSYNC && Bukkit.getPluginManager().getPlugin("HuskSync") == null) {
-            getLogger().severe("HuskSync storage selected, but HuskSync is not installed");
-            return false;
+    private void removeCommandAliases(PluginCommand command) {
+        java.util.List<String> aliases = findCommandAliases(Bukkit.getCommandMap().getKnownCommands(), command);
+        if (aliases.isEmpty()) {
+            return;
         }
 
-        String host = getConfig().getString("storage.mariadb.host", "localhost");
-        int port = getConfig().getInt("storage.mariadb.port", 3306);
-        String dbName = getConfig().getString("storage.mariadb.database", "yov");
-        String user = getConfig().getString("storage.mariadb.username", "root");
-        String pass = getConfig().getString("storage.mariadb.password", "");
+        if (!removeCommandMappings(Bukkit.getCommandMap().getKnownCommands(), aliases)) {
+            Map<String, Command> mutableCommands = getMutableKnownCommands();
+            if (mutableCommands == null || !removeCommandMappings(mutableCommands, aliases)) {
+                getLogger().warning("Could not remove command aliases. /yov will work, but namespaced command entries may remain.");
+                return;
+            }
+        }
 
-        StorageManager storageManager = new StorageManager(getDataFolder(), storageType.name(), host, port, dbName, user, pass);
-        backend = storageManager.getBackend();
+        syncCommands();
+    }
 
+    private java.util.List<String> findCommandAliases(Map<String, Command> knownCommands, PluginCommand command) {
+        java.util.List<String> aliases = new java.util.ArrayList<>();
+        knownCommands.forEach((key, value) -> {
+            if (value == command && !key.equals("yov")) {
+                aliases.add(key);
+            }
+        });
+        return aliases;
+    }
+
+    private boolean removeCommandMappings(Map<String, Command> knownCommands, java.util.List<String> keys) {
         try {
-            backend.connect();
-        } catch (Exception e) {
-            getLogger().severe("Failed to connect to storage backend (" + storageType + "): " + e.getMessage());
-            e.printStackTrace();
+            for (String key : keys) {
+                knownCommands.remove(key);
+            }
+            return true;
+        } catch (UnsupportedOperationException ignored) {
+            return false;
+        } catch (RuntimeException e) {
+            getLogger().warning("Failed to remove command aliases: " + e.getMessage());
             return false;
         }
+    }
 
-        writeQueue = (storageType == StorageType.HUSKSYNC) ? null : new WriteQueue(backend);
-
-        if (storageType != StorageType.HUSKSYNC) {
-            variableCache.loadFromDatabase(backend);
-            playerSync = new NoopPlayerVariableSync();
-        } else {
+    @SuppressWarnings("unchecked")
+    private Map<String, Command> getMutableKnownCommands() {
+        Class<?> type = Bukkit.getCommandMap().getClass();
+        while (type != null) {
             try {
-                var m = backend.getClass().getMethod("getGlobalEntries");
-                Object r = m.invoke(backend);
-                if (r instanceof java.util.Map<?, ?> map) {
-                    for (var e : map.entrySet()) {
-                        Object k = e.getKey();
-                        Object v = e.getValue();
-                        if (k instanceof String ks && v instanceof String vs) {
-                            variableCache.put(ks.toLowerCase(Locale.ROOT), vs);
-                        }
-                    }
-                }
-            } catch (Exception ignored) {
-            }
-
-            try {
-                Class<?> cls = Class.forName("yov.husksync.HuskSyncPlayerVariableSync");
-                playerSync = (PlayerVariableSync) cls.getConstructor(YOVPlugin.class).newInstance(this);
-                if (!playerSync.isEnabled()) {
-                    getLogger().severe("HuskSync storage selected, but HuskSync integration could not be initialized.");
-                    return false;
-                }
-            } catch (Throwable e) {
-                getLogger().severe("Failed to initialize HuskSync integration: " + e.getMessage());
-                e.printStackTrace();
-                return false;
+                java.lang.reflect.Field field = type.getDeclaredField("knownCommands");
+                field.setAccessible(true);
+                Object value = field.get(Bukkit.getCommandMap());
+                return value instanceof Map<?, ?> ? (Map<String, Command>) value : null;
+            } catch (NoSuchFieldException ignored) {
+                type = type.getSuperclass();
+            } catch (ReflectiveOperationException | RuntimeException e) {
+                getLogger().warning("Failed to access Paper command map: " + e.getMessage());
+                return null;
             }
         }
+        return null;
+    }
 
-        variableService = new VariableService(storageType, backend, variableCache, getLogger(), PREFIX, writeQueue, playerSync);
-        migrationService = new MigrationService(this);
-
-        return true;
+    private void syncCommands() {
+        try {
+            Bukkit.getServer().getClass().getMethod("syncCommands").invoke(Bukkit.getServer());
+        } catch (ReflectiveOperationException ignored) {
+        }
     }
 }

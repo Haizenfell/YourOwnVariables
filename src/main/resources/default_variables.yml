@@ -1,4 +1,9 @@
-variables: {}
-#variables:
-  #claim_points: "200" >> %yov_player_key:claim_points% == 200
-  #variable: "String" >> %yov_player_key:variable% == "String"
+player_variables:
+  claim_points: "200"
+  vote_points: "0"
+  vote_total: "0"
+  mentions_total: "0"
+  messages_total: "0"
+  grove_attribute: "0"
+  titan_attribute: "0"
+  phantom_attribute: "0"

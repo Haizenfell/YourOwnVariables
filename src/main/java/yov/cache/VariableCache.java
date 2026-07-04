@@ -1,40 +1,18 @@
 package yov.cache;
 
-import yov.storage.StorageBackend;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class VariableCache {
 
     private final Map<String, String> cache = new ConcurrentHashMap<>();
+    @SuppressWarnings("unused")
     private final Logger logger;
 
     public VariableCache(Logger logger) {
         this.logger = logger;
-    }
-
-    public void loadFromDatabase(StorageBackend backend) {
-        try {
-            int count = 0;
-            var entries = backend.getAllEntries();
-
-            for (var e : entries.entrySet()) {
-                String k = e.getKey();
-                String v = e.getValue();
-                if (k != null && v != null) {
-                    cache.put(k, v);
-                    count++;
-                }
-            }
-
-            logger.info("Loaded " + count + " variables into cache.");
-        } catch (Exception e) {
-            logger.log(Level.WARNING, "Error loading cache from backend", e);
-        }
     }
 
     public String compute(String key, BiFunction<String, String, String> func) {

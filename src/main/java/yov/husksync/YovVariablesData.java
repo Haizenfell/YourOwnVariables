@@ -9,6 +9,7 @@ import yov.YOVPlugin;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 
 public class YovVariablesData extends BukkitData implements Adaptable {
@@ -16,7 +17,7 @@ public class YovVariablesData extends BukkitData implements Adaptable {
     private Map<String, String> variables;
 
     public YovVariablesData() {
-        this.variables = new LinkedHashMap<>();
+        variables = new LinkedHashMap<>();
     }
 
     public YovVariablesData(@NotNull Map<String, String> variables) {
@@ -24,32 +25,29 @@ public class YovVariablesData extends BukkitData implements Adaptable {
     }
 
     public @NotNull Map<String, String> getVariables() {
-        if (variables == null) return Collections.emptyMap();
-        return variables;
+        return variables == null ? Collections.emptyMap() : variables;
     }
 
     public void setVariables(Map<String, String> variables) {
-        if (variables == null) {
-            this.variables = new LinkedHashMap<>();
-        } else {
-            this.variables = new LinkedHashMap<>(variables);
+        this.variables = new LinkedHashMap<>();
+        if (variables == null) return;
+
+        for (Map.Entry<String, String> entry : variables.entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue();
+            if (key == null || value == null) continue;
+
+            String normalized = key.trim().toLowerCase(Locale.ROOT);
+            if (!normalized.isEmpty()) {
+                this.variables.put(normalized, value);
+            }
         }
     }
 
     @Override
     public void apply(@NotNull BukkitUser user, @NotNull BukkitHuskSync plugin) {
         YOVPlugin yov = YOVPlugin.getInstance();
-        if (yov == null || !yov.isEnabled()) return;
-        var svc = yov.getVariableService();
-        if (svc == null) return;
-
-        String playerLower = user.getUsername().toLowerCase(java.util.Locale.ROOT);
-        Map<String, String> full = new java.util.HashMap<>();
-        for (Map.Entry<String, String> e : getVariables().entrySet()) {
-            String k = e.getKey();
-            if (k == null || k.isEmpty()) continue;
-            full.put(playerLower + "_" + k.toLowerCase(java.util.Locale.ROOT), e.getValue());
-        }
-        svc.replacePlayerVariables(playerLower, full);
+        if (yov == null || !yov.isEnabled() || yov.getVariableService() == null) return;
+        yov.getVariableService().replacePlayerVariables(user.getUsername(), getVariables());
     }
 }
