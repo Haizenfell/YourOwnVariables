@@ -186,3 +186,13 @@ Methods:
 - Use API mutations instead of dispatching `/yov` commands from another plugin.
 - Do not parse YOV PlaceholderAPI placeholders when you can depend on this API.
 - Do not modify the maps returned by the API; they are immutable snapshots.
+
+## Placeholder-Only Integrations
+
+When another plugin cannot depend on the Java API and can only read PlaceholderAPI values:
+
+- `%yov_player_loaded%` returns `true` after YOV has loaded that player's HuskSync data locally.
+- `%yov_player_key:<variable>%` returns the configured `placeholders.loading-value` while player data is still loading or no player context is available.
+- After `%yov_player_loaded%` is `true`, a missing variable returns `null`.
+
+Keep `placeholders.loading-value` different from `null` when another plugin triggers actions from `== null` conditions.

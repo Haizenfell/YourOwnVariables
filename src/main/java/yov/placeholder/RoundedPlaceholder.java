@@ -42,13 +42,19 @@ public class RoundedPlaceholder extends PlaceholderExpansion {
 
     @Override
     public @Nullable String onPlaceholderRequest(@Nullable Player player, @NotNull String identifier) {
-        if (player == null || identifier.isBlank()) return "null";
+        if (identifier.isBlank()) return "null";
 
         ParsedRounded parsed = parse(identifier);
         if (parsed == null) return "null";
+        if (player == null) return loadingValue();
 
         String value = variableService.getPlayerValue(player.getName(), parsed.variable());
-        if (value == null) return "null";
+        if (value == null) {
+            if (!variableService.isPlayerLoaded(player.getName())) {
+                return loadingValue();
+            }
+            return "null";
+        }
 
         try {
             return new BigDecimal(value.trim())
@@ -57,6 +63,11 @@ public class RoundedPlaceholder extends PlaceholderExpansion {
         } catch (NumberFormatException ex) {
             return "null";
         }
+    }
+
+    private String loadingValue() {
+        String value = plugin.getConfig().getString("placeholders.loading-value", "loading");
+        return value != null ? value : "loading";
     }
 
     private ParsedRounded parse(String identifier) {

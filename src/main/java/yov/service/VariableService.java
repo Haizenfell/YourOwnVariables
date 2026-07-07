@@ -114,8 +114,16 @@ public class VariableService {
     }
 
     public String getPlayerValue(String playerName, String variable) {
-        String fullKey = toFullKey(playerName, variable);
-        return fullKey == null ? null : cache.get(fullKey);
+        String playerLower = normalizePlayer(playerName);
+        String var = normalizeVariable(variable);
+        if (playerLower.isEmpty() || var == null) return null;
+
+        Map<String, String> variables = variablesByPlayer.get(playerLower);
+        if (variables != null) {
+            return variables.get(var);
+        }
+
+        return cache.get(toFullKey(playerLower, var));
     }
 
     public List<String> knownVariableNames() {

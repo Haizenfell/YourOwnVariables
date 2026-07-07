@@ -6,3 +6,9 @@ husksync:
 defaults:
   # Max ticks to wait for HuskSync to apply player data before trying defaults.
   apply-timeout-ticks: 100
+
+placeholders:
+  # Returned by player placeholders while HuskSync data has not loaded into YOV yet
+  # or when PlaceholderAPI resolves them without a player context.
+  # Keep this different from "null" if another plugin triggers events on null.
+  loading-value: "loading"

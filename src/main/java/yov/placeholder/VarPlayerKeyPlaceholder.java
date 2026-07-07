@@ -39,11 +39,22 @@ public class VarPlayerKeyPlaceholder extends PlaceholderExpansion {
 
     @Override
     public @Nullable String onPlaceholderRequest(@Nullable Player player, @NotNull String identifier) {
-        if (player == null || identifier.isBlank()) return "null";
+        if (identifier.isBlank()) return "null";
+        if (identifier.equalsIgnoreCase("player_loaded")) {
+            return Boolean.toString(player != null && variableService.isPlayerLoaded(player.getName()));
+        }
         if (!identifier.startsWith("player_key:")) return "null";
+        if (player == null) return loadingValue();
 
         String variable = identifier.substring("player_key:".length());
         String value = variableService.getPlayerValue(player.getName(), variable);
-        return value != null ? value : "null";
+        if (value != null) return value;
+        if (!variableService.isPlayerLoaded(player.getName())) return loadingValue();
+        return "null";
+    }
+
+    private String loadingValue() {
+        String value = plugin.getConfig().getString("placeholders.loading-value", "loading");
+        return value != null ? value : "loading";
     }
 }

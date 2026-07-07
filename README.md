@@ -74,12 +74,15 @@ Examples:
 
 ```text
 %yov_player_key:coins%
+%yov_player_loaded%
 %rounded_player_key:coins%
 %rounded_player_key_2:coins%
 ```
 
 Global/local placeholders such as `%yov_coins%` are intentionally not supported.
-Rounded placeholders use `HALF_UP` rounding. Missing or non-numeric values return `null`.
+Player-key placeholders return `loading` while HuskSync data has not loaded into YOV yet or no player context is available.
+Use `%yov_player_loaded%` as a guard when another plugin needs to distinguish loading from a truly missing variable.
+Rounded placeholders use `HALF_UP` rounding. Missing or non-numeric values return `null` after player data has loaded.
 
 ## Default Variables
 
