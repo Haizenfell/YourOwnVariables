@@ -1,5 +1,56 @@
 # YourOwnVariables (YOV)
 
+## API dependency (JitPack)
+
+Add the JitPack repository and depend on `com.github.Haizenfell:YourOwnVariables`. The examples use the GitHub tag `6.0`; you can also pin a commit SHA. The version must identify a revision pushed to GitHub, not just a version written in `pom.xml`.
+
+### Maven
+
+Add these entries to your plugin's `pom.xml`:
+
+```xml
+<repositories>
+    <repository>
+        <id>jitpack.io</id>
+        <url>https://jitpack.io</url>
+    </repository>
+</repositories>
+
+<dependencies>
+    <dependency>
+        <groupId>com.github.Haizenfell</groupId>
+        <artifactId>YourOwnVariables</artifactId>
+        <version>6.0</version>
+        <scope>provided</scope>
+    </dependency>
+</dependencies>
+```
+
+### Gradle (Kotlin DSL)
+
+Add to your plugin's `build.gradle.kts`:
+
+```kotlin
+repositories {
+    mavenCentral()
+    maven { url = uri("https://jitpack.io") }
+}
+
+dependencies {
+    compileOnly("com.github.Haizenfell:YourOwnVariables:6.0")
+}
+```
+
+Also declare the runtime dependency in your plugin's `plugin.yml`:
+
+```yaml
+depend: [YourOwnVariables]
+```
+
+Install YOV on the server separately; do not shade its classes into your plugin. The selected revision must build successfully on JitPack with JDK 26 or newer. Check the [project's JitPack page](https://jitpack.io/#Haizenfell/YourOwnVariables) for build status and the [JitPack documentation](https://docs.jitpack.io/) for repository setup details.
+
+## Overview
+
 YourOwnVariables is a Paper plugin for player-specific string variables, backed by HuskSync. It gives menus, statistics, progression systems, and other plugins a shared way to read and update player data through PlaceholderAPI, commands, and a Java API.
 
 YOV manages player variables only. It does not provide world, global, or server variables, and it does not require a separate player database.
@@ -230,7 +281,7 @@ Declare a dependency in the consuming plugin:
 depend: [YourOwnVariables]
 ```
 
-Compile against YOV with `provided` scope; do not shade its classes. Build with `mvn clean install` to install the artifact locally, then reference it:
+For a remote dependency, use the [JitPack setup above](#api-dependency-jitpack). As a local alternative, build with `mvn clean install` and use the following coordinates with `provided` scope. These `yov` coordinates refer to the locally installed artifact, not the JitPack artifact; do not shade its classes.
 
 ```xml
 <dependency>
