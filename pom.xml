@@ -6,16 +6,18 @@
 
     <groupId>yov</groupId>
     <artifactId>YourOwnVariables</artifactId>
-    <version>5.0</version>
+    <version>6.0</version>
     <packaging>jar</packaging>
 
     <name>YourOwnVariables</name>
 
     <properties>
-        <java.version>25</java.version>
-        <paper.version>26.1.2.build.72-stable</paper.version>
-        <placeholderapi.version>2.11.6</placeholderapi.version>
-        <husksync.version>3.8.7+1.21.8</husksync.version>
+        <java.version>26</java.version>
+        <paper.version>26.3.build.205-stable</paper.version>
+        <placeholderapi.version>2.12.3</placeholderapi.version>
+        <husksync.version>4.1.0+26.3</husksync.version>
+        <lettuce.version>6.6.0.RELEASE</lettuce.version>
+        <annotations.version>26.1.0</annotations.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -53,18 +55,65 @@
             <version>${husksync.version}</version>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>io.lettuce</groupId>
+            <artifactId>lettuce-core</artifactId>
+            <version>${lettuce.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+            <version>${annotations.version}</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>plugin.yml</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>plugin.yml</exclude>
+                </excludes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.10.1</version>
+                <version>3.16.0</version>
                 <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
+                    <release>${java.version}</release>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.6.3</version>
+                <executions>
+                    <execution>
+                        <id>enforce-java-version</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>[26,)</version>
+                                </requireJavaVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

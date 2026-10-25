@@ -3,87 +3,73 @@ package yov.defaults;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.scheduler.BukkitRunnable;
 import yov.YOVPlugin;
 import yov.service.VariableService;
 
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public class DefaultVariables implements Listener {
+public class DefaultVariables {
 
     private final YOVPlugin plugin;
     private final VariableService service;
     private FileConfiguration defaults;
+    private Map<String, String> cachedDefaults = Map.of();
 
     public DefaultVariables(YOVPlugin plugin, VariableService service) {
         this.plugin = plugin;
         this.service = service;
         loadDefaults();
         service.setDefaultVariablesSupplier(this::getDefaults);
-
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            Map<String, String> defaultValues = getDefaults();
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                service.applyDefaults(player, defaultValues);
-            }
-        });
-    }
-
-    @EventHandler
-    public void onJoin(PlayerJoinEvent event) {
-        Player player = event.getPlayer();
-        int timeoutTicks = Math.max(1, plugin.getConfig().getInt("defaults.apply-timeout-ticks", 100));
-
-        new BukkitRunnable() {
-            private int waited;
-
-            @Override
-            public void run() {
-                if (!player.isOnline()) {
-                    cancel();
-                    return;
-                }
-
-                if (service.isPlayerLoaded(player.getName())) {
-                    service.applyDefaults(player, getDefaults());
-                    cancel();
-                    return;
-                }
-
-                if (waited >= timeoutTicks) {
-                    plugin.getLogger().warning("Default variables were not applied to " + player.getName()
-                            + " because HuskSync data was not loaded after " + timeoutTicks + " ticks.");
-                    cancel();
-                    return;
-                }
-
-                waited++;
-            }
-        }.runTaskTimer(plugin, 1L, 1L);
     }
 
     private Map<String, String> getDefaults() {
+        return cachedDefaults;
+    }
+
+    private void rebuildCache() {
         Map<String, String> values = new LinkedHashMap<>();
-        if (!defaults.isConfigurationSection("player_variables")) return values;
+        if (!defaults.isConfigurationSection("player_variables")) {
+            if (defaults.contains("player_variables")) {
+                throw new IllegalStateException(
+                        "default_variables.yml: player_variables must be a mapping of names to values.");
+            }
+            cachedDefaults = Map.of();
+            return;
+        }
 
         var section = defaults.getConfigurationSection("player_variables");
-        if (section == null) return values;
+        if (section == null) {
+            cachedDefaults = Map.of();
+            return;
+        }
 
         for (String key : section.getKeys(false)) {
-            String value = section.getString(key);
-            if (key != null && value != null) {
-                values.put(key, value);
+            Object configuredValue = section.get(key);
+            if (!(configuredValue instanceof String || configuredValue instanceof Number
+                    || configuredValue instanceof Boolean)) {
+                throw new IllegalStateException(
+                        "default_variables.yml: variable '" + key + "' must have a scalar value.");
             }
+            String value = String.valueOf(configuredValue);
+            String normalized = service.normalizeVariable(key);
+            if (normalized == null || value == null) {
+                throw new IllegalStateException(
+                        "default_variables.yml contains an invalid player variable: " + key);
+            }
+            values.put(normalized, value);
         }
-        return values;
+        service.limits().validateSnapshot(values).ifPresent(violation -> {
+            throw new IllegalStateException(
+                    "Configured default variables exceed YOV safety limits: " + violation);
+        });
+        cachedDefaults = values.isEmpty()
+                ? Map.of()
+                : Collections.unmodifiableMap(values);
     }
 
     private void loadDefaults() {
@@ -102,6 +88,14 @@ public class DefaultVariables implements Listener {
             }
         }
 
-        defaults = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration loaded = new YamlConfiguration();
+        try {
+            loaded.load(file);
+        } catch (Exception error) {
+            throw new IllegalStateException(
+                    "Could not parse default_variables.yml; defaults are mandatory.", error);
+        }
+        defaults = loaded;
+        rebuildCache();
     }
 }

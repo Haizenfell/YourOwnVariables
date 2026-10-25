@@ -11,10 +11,13 @@ public class VarPlayerKeyPlaceholder extends PlaceholderExpansion {
 
     private final YOVPlugin plugin;
     private final VariableService variableService;
+    private final String loadingValue;
 
     public VarPlayerKeyPlaceholder(YOVPlugin plugin, VariableService variableService) {
         this.plugin = plugin;
         this.variableService = variableService;
+        String configured = plugin.getConfig().getString("placeholders.loading-value", "loading");
+        this.loadingValue = configured != null ? configured : "loading";
     }
 
     @Override
@@ -40,21 +43,13 @@ public class VarPlayerKeyPlaceholder extends PlaceholderExpansion {
     @Override
     public @Nullable String onPlaceholderRequest(@Nullable Player player, @NotNull String identifier) {
         if (identifier.isBlank()) return "null";
-        if (identifier.equalsIgnoreCase("player_loaded")) {
-            return Boolean.toString(player != null && variableService.isPlayerLoaded(player.getName()));
-        }
         if (!identifier.startsWith("player_key:")) return "null";
-        if (player == null) return loadingValue();
+        if (player == null) return loadingValue;
 
         String variable = identifier.substring("player_key:".length());
-        String value = variableService.getPlayerValue(player.getName(), variable);
-        if (value != null) return value;
-        if (!variableService.isPlayerLoaded(player.getName())) return loadingValue();
-        return "null";
-    }
-
-    private String loadingValue() {
-        String value = plugin.getConfig().getString("placeholders.loading-value", "loading");
-        return value != null ? value : "loading";
+        VariableService.LocalValue local = variableService.readLocalValue(
+                player.getUniqueId(), variable);
+        if (!local.ready()) return loadingValue;
+        return local.value() != null ? local.value() : "null";
     }
 }

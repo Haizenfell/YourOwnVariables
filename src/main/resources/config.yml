@@ -1,14 +1,62 @@
 husksync:
-  # Delay before YOV unloads cached player variables after quit.
-  # HuskSync usually saves data during this window.
+  # YOV requires HuskSync synchronization.mode=LOCKSTEP on every backend.
+  # Backends sharing variables must use one cluster, Redis and database,
+  # with a globally unique HuskSync server ID for each backend.
+  # Delay before removing a retired disconnected session. It becomes non-READY
+  # on the next tick, while late callbacks remain harmless.
   unload-delay-ticks: 40
-
-defaults:
-  # Max ticks to wait for HuskSync to apply player data before trying defaults.
-  apply-timeout-ticks: 100
+  # Grace period for accepted offline writes during reload or shutdown.
+  shutdown-wait-millis: 5000
+  # Bound user lookups and current-snapshot reads so these stages cannot
+  # hold an offline player's UUID queue forever.
+  offline-user-lookup-timeout-millis: 5000
+  offline-data-read-timeout-millis: 5000
+  delta-rpc:
+    # Variable-only request/ack channel for players on another backend.
+    # Full HuskSync snapshots are never sent to an online player by this channel.
+    timeout-millis: 5000
+    max-request-age-millis: 30000
+    max-payload-bytes: 524288
+    max-pending-requests: 2048
+    # Request IDs are retained in memory and reserved in Redis with an expiry
+    # so repeated delivery or a restart cannot apply the same ADD/REMOVE twice.
+    receipt-cache-size: 4096
+    # Values below max-request-age-millis are automatically raised to that age.
+    receipt-ttl-millis: 300000
+  # Fail synchronization if HuskSync never completes it (30 seconds by default).
+  # Set to 0 to disable the watchdog.
+  sync-timeout-ticks: 600
+  disconnect-on-sync-failure: true
+  sync-failure-message: "Your data could not be synchronized. Please reconnect."
+  login-preload:
+    # Optional availability check during AsyncPlayerPreLoginEvent.
+    # This is not full HuskSync synchronization, and its result cannot replace
+    # the post-join sync. Leave disabled on large networks to avoid an extra
+    # database/Redis read on every backend switch.
+    enabled: false
+    timeout-millis: 5000
+    # Reject login if the preliminary data check fails.
+    disconnect-on-failure: true
+    timeout-message: "Your data is still loading. Please reconnect."
+    failure-message: "Your data could not be loaded. Please reconnect."
+    unused-cleanup-delay-ticks: 200
 
 placeholders:
-  # Returned by player placeholders while HuskSync data has not loaded into YOV yet
-  # or when PlaceholderAPI resolves them without a player context.
-  # Keep this different from "null" if another plugin triggers events on null.
+  # Returned until HuskSync has fully applied player data, or when
+  # PlaceholderAPI resolves a placeholder without a player context.
+  # Keep different from "null" if another plugin triggers actions on null.
   loading-value: "loading"
+
+# Safety limits for commands, API mutations, defaults and incoming HuskSync data.
+# Invalid or oversized snapshots are rejected without truncation. These defaults
+# comfortably exceed the expected workload of about 30 short variables per player.
+limits:
+  max-variables-per-player: 256
+  max-variable-name-bytes: 128
+  max-value-bytes: 16384
+  max-data-bytes-per-player: 262144
+  max-pending-online-mutations-per-player: 256
+  max-pending-offline-mutations-per-player: 64
+  max-pending-offline-mutations-global: 2048
+  # Bounds pending async API calls, current-data reads and scheduler bridges.
+  max-pending-api-calls-global: 8192

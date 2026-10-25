@@ -1,14 +1,18 @@
 name: YourOwnVariables
 main: yov.YOVPlugin
-version: 5.0
+version: '${project.version}'
 author: Haizenfell
-api-version: 1.13
+api-version: '26.3'
 depend: [PlaceholderAPI, HuskSync]
+libraries:
+  # YOV uses a separate request/ack channel on the Redis configured in HuskSync.
+  # Paper downloads and caches the required library.
+  - 'io.lettuce:lettuce-core:6.6.0.RELEASE'
 
 commands:
   yov:
     description: Player variable management
-    usage: "/<command> <help|reload|set|rem|add|delete|check|userclear>"
+    usage: "/<command> <help|reload|status|set|rem|add|delete|check|userclear>"
 
 permissions:
   yov.admin:

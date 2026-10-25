@@ -5,14 +5,13 @@ import net.william278.husksync.adapter.Adaptable;
 import net.william278.husksync.data.BukkitData;
 import net.william278.husksync.user.BukkitUser;
 import org.jetbrains.annotations.NotNull;
-import yov.YOVPlugin;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 
-public class YovVariablesData extends BukkitData implements Adaptable {
+public final class YovVariablesData extends BukkitData implements Adaptable {
 
     private Map<String, String> variables;
 
@@ -46,8 +45,5 @@ public class YovVariablesData extends BukkitData implements Adaptable {
 
     @Override
     public void apply(@NotNull BukkitUser user, @NotNull BukkitHuskSync plugin) {
-        YOVPlugin yov = YOVPlugin.getInstance();
-        if (yov == null || !yov.isEnabled() || yov.getVariableService() == null) return;
-        yov.getVariableService().replacePlayerVariables(user.getUsername(), getVariables());
     }
 }

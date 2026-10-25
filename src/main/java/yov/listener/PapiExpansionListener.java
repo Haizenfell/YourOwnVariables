@@ -21,6 +21,6 @@ public class PapiExpansionListener implements Listener {
     public void onPapiReload(ExpansionsLoadedEvent event) {
         plugin.getLogger().info("[YOV] PlaceholderAPI reloaded — re-registering expansions...");
         registerAll();
-        plugin.getLogger().info("[YOV] Re-register completed.");
+        if (plugin.isEnabled()) plugin.getLogger().info("[YOV] Re-register completed.");
     }
 }

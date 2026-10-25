@@ -5,6 +5,7 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import yov.YOVPlugin;
+import yov.config.VariableLimits;
 import yov.service.VariableService;
 
 import java.math.BigDecimal;
@@ -14,10 +15,18 @@ public class RoundedPlaceholder extends PlaceholderExpansion {
 
     private final YOVPlugin plugin;
     private final VariableService variableService;
+    private final String loadingValue;
+    private final int maxOutputCharacters;
 
     public RoundedPlaceholder(YOVPlugin plugin, VariableService variableService) {
         this.plugin = plugin;
         this.variableService = variableService;
+        String configured = plugin.getConfig().getString("placeholders.loading-value", "loading");
+        this.loadingValue = configured != null ? configured : "loading";
+        VariableLimits limits = plugin.getVariableLimits();
+        this.maxOutputCharacters = Math.min(65_536, limits != null
+                ? limits.maxValueBytes()
+                : VariableLimits.DEFAULT_MAX_VALUE_BYTES);
     }
 
     @Override
@@ -46,28 +55,32 @@ public class RoundedPlaceholder extends PlaceholderExpansion {
 
         ParsedRounded parsed = parse(identifier);
         if (parsed == null) return "null";
-        if (player == null) return loadingValue();
+        if (player == null) return loadingValue;
 
-        String value = variableService.getPlayerValue(player.getName(), parsed.variable());
-        if (value == null) {
-            if (!variableService.isPlayerLoaded(player.getName())) {
-                return loadingValue();
-            }
-            return "null";
-        }
+        VariableService.LocalValue local = variableService.readLocalValue(
+                player.getUniqueId(), parsed.variable());
+        if (!local.ready()) return loadingValue;
+        String value = local.value();
+        if (value == null) return "null";
 
         try {
-            return new BigDecimal(value.trim())
-                    .setScale(parsed.decimals(), RoundingMode.HALF_UP)
+            BigDecimal numeric = new BigDecimal(value.trim());
+            long scaleDelta = Math.abs((long) numeric.scale() - parsed.decimals());
+            long integerCharacters = Math.max(
+                    1L, (long) numeric.precision() - numeric.scale() + 1L);
+            long estimatedCharacters = integerCharacters
+                    + (numeric.signum() < 0 ? 1L : 0L)
+                    + (parsed.decimals() > 0 ? parsed.decimals() + 1L : 0L);
+            if (scaleDelta > maxOutputCharacters
+                    || estimatedCharacters > maxOutputCharacters) {
+                return "null";
+            }
+            String rounded = numeric.setScale(parsed.decimals(), RoundingMode.HALF_UP)
                     .toPlainString();
-        } catch (NumberFormatException ex) {
+            return rounded.length() <= maxOutputCharacters ? rounded : "null";
+        } catch (NumberFormatException | ArithmeticException ex) {
             return "null";
         }
-    }
-
-    private String loadingValue() {
-        String value = plugin.getConfig().getString("placeholders.loading-value", "loading");
-        return value != null ? value : "loading";
     }
 
     private ParsedRounded parse(String identifier) {
